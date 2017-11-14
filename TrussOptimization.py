@@ -140,17 +140,17 @@ class FourBarOptimizer(QWidget):
         self.init_ui()
               
     def init_ui(self):
-        self.damping = 0.1
+        self.damping = 1.0
         self.iterations = 0
-        self.maxIterations = 1
+        self.maxIterations = 100
         self.mechanismStartAngle = 0.017
 
         #self.thetaTargets = [0,90,180,270]
         #self.xTargets = [1,4,6,3]
         #self.yTargets = [1,0,1,2]
-        self.thetaTargets = [0]
-        self.xTargets = [1]
-        self.yTargets = [1]
+        self.thetaTargets = [0,90]
+        self.xTargets = [1,4]
+        self.yTargets = [1,0]
         self.targets = [self.thetaTargets,self.xTargets,self.yTargets]
         self.exact = [True,True,False,True]
         self.exactSelected = sum(self.exact)
@@ -175,6 +175,21 @@ class FourBarOptimizer(QWidget):
         self.pathY = [0]*len(self.plotAngles)
 
         #Builds GUI
+        # Four input tables: 
+        # one with initial node coordinates (3xn: Node,X,Y)
+        # one with node connectivity (3xbeams: Element, From Node, To Node)
+        # one with reactions locations (3xreactions: Reaction, Node, Direction)
+        # and one with external loading (3xForces: On Node, Force, Angle)
+        
+        # Dynamic plot updates with triangles for reactions, lines for beams and filled circles for nodes, and arrow for applied forces
+        # Checks: all nodes have at least one member connectivity
+        # 
+        # Objective function: Sum(Area[i]*length[i])
+        # subject to:
+        # max(stresses) < maxStress
+        # Any locaton constraints, such as: (generated checklist?)
+        # Node[1][0] = 1
+
         self.setGeometry(200,30,1000,700)
 
         self.load_button = QPushButton('Load Data',self)
@@ -188,7 +203,7 @@ class FourBarOptimizer(QWidget):
         self.dampingSlider.setMaximum(1000)
         #self.dampingSlider.setTickInterval(10)
         #self.dampingSlider.setSingleStep(0.01)
-        self.dampingSlider.setValue(self.damping*1000)
+        self.dampingSlider.setValue(1000)
         self.dampingSlider.valueChanged.connect(self.dampingChanged)
         self.dampingLabel = QLabel("Damping = %1.2f"%(self.damping),self)
 
@@ -312,6 +327,8 @@ class FourBarOptimizer(QWidget):
     def fourBarExpression(self):
         # variables = b1x,b1y,b2x,b2y,l0,l1,l2,l3,l4,l5,alpha
         b1x,b1y,b2x,b2y,l0,l1,l2,l3,l4,l5,alpha, a0 = symbols('b1x,b1y,b2x,b2y,l0,l1,l2,l3,l4,l5,alpha,a0')
+        p1x = b1x+l1*cos(alpha + a0)
+        p1y = b1y+l1*sin(alpha + a0)
         baseAngle = atan((b2y-b1y)/(b2x-b1x))
 
         x3 = l0*cos(baseAngle) - l1*cos(alpha + a0)
@@ -321,8 +338,8 @@ class FourBarOptimizer(QWidget):
         theta5 = atan2((y3-(-l3)*sin(theta3))/l5, (x3-(-l3)*cos(theta3))/l5)
 
         dyadAngle1 = acos((l5**2 + l2**2 - l4**2)/(2*l5*l2))
-        Cx = b1x+l1*cos(alpha + a0) + l2*cos(theta5 + dyadAngle1)
-        Cy = b1y+l1*sin(alpha + a0) + l2*sin(theta5 + dyadAngle1)
+        Cx = p1x+l2*cos(theta5 + dyadAngle1)
+        Cy = p1y+l2*sin(theta5 + dyadAngle1)
 
         return (Cx,Cy)
 
@@ -341,8 +358,8 @@ class FourBarOptimizer(QWidget):
         
         baseRun = np.float64(bases[1][0] - bases[0][0])
         baseRise = np.float64(bases[1][1]-bases[0][1])
-        #print(baseRun)
-        #print(baseRise)
+        print(baseRun)
+        print(baseRise)
         baseAngle = 0
         if baseRise == 0:
             if baseRun > 0:
@@ -381,15 +398,12 @@ class FourBarOptimizer(QWidget):
         return self.mechanismPoints
 
     def runFourBarOptimization(self):
-        # Calculate betas and gammas for target design - 3 points
-        # Evaluate error from target path
-        # 
         print('Starting Optimization')
         (xExpression,yExpression) = self.fourBarExpression()
         objectiveFunction = 0
 
         for i in range(0,len(self.xTargets)):
-            objectiveExpression = (self.xTargets[i] - xExpression)**2 + (self.yTargets[i] - yExpression)**2
+            objectiveExpression = sqrt((self.xTargets[i] - xExpression)**2 + (self.yTargets[i] - yExpression)**2)
             objectiveExpression = objectiveExpression.subs(symbols('alpha'),self.thetaTargets[i])
             objectiveFunction = objectiveFunction + objectiveExpression
 
@@ -416,10 +430,10 @@ class FourBarOptimizer(QWidget):
             self.mechanismBases[1][0],
             self.mechanismBases[1][1]]
         shouldContinue = True
-        rp = 0.5
+        rp = 1
         testSteps = [0,0.01,0.02]
         expression = objectiveFunction
-        epsilon = 0.001
+
         print('Set up initial constants and expressions')
         self.iterations = 0
         position = startingPoint
@@ -525,7 +539,7 @@ class FourBarOptimizer(QWidget):
 
             print('Checking Convergence')
             # Check convergence
-            deltaObjective = abs(float(abs(objectiveValueLast) - abs(objectiveValue)))
+            deltaObjective = abs(float(objectiveValueLast - objectiveValue))
             deltaVariables = [abs(new - old) for new, old in zip(position,lastPosition)]
             maxDelta = max(deltaVariables)
             if max(deltaObjective,maxDelta) < epsilon:
@@ -643,8 +657,8 @@ class FourBarOptimizer(QWidget):
         self.length3Label.setText("Length 3 = %2.4f"%(self.mechanismLengths[3]))
         self.length4Label.setText("Length 4 = %2.4f"%(self.mechanismLengths[4]))
         self.length5Label.setText("Length 5 = %2.4f"%(self.mechanismLengths[5]))
-        self.base1Label.setText("Base 1 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[0][0],self.mechanismBases[0][1]))
-        self.base2Label.setText("Base 2 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[1][0],self.mechanismBases[1][1]))
+        self.base1Label = QLabel("Base 1 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[0][0],self.mechanismBases[0][1]),self)
+        self.base2Label = QLabel("Base 2 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[1][0],self.mechanismBases[1][1]),self)
 
 if __name__ == '__main__':
     #Start the program this way according to https://stackoverflow.com/questions/40094086/python-kernel-dies-for-second-run-of-pyqt5-gui
