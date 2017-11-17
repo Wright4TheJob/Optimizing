@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
                              QFileDialog, QLabel, QSlider, QCheckBox, 
                              QLineEdit, QVBoxLayout, QApplication, QPushButton,
                              QTableWidget, QTableWidgetItem,QSizePolicy,
-                             QGridLayout,QGroupBox, QMainWindow)
+                             QGridLayout,QGroupBox, QMainWindow,QAction)
 from PyQt5.QtCore import Qt, QTimer, QCoreApplication
 
 from scipy import stats
