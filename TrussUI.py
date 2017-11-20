@@ -11,9 +11,12 @@ from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
 							 QFileDialog, QLabel, QSlider, QCheckBox, 
 							 QLineEdit, QVBoxLayout, QApplication, QPushButton,
 							 QTableWidget, QTableWidgetItem,QSizePolicy,
-							 QGridLayout,QGroupBox, QMainWindow,QAction)
+							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView)
 from PyQt5.QtCore import Qt, QTimer, QCoreApplication
 from matplotlib.figure import Figure
+from matplotlib import rcParams
+import matplotlib.image as image
+import math
 
 try:
 	_fromUtf8 = QtCore.QString.fromUtf8
@@ -31,7 +34,7 @@ except AttributeError:
 		return QtGui.QApplication.translate(context, text, disambig)
 """
 
-#rcParams.update({'figure.autolayout': True})
+rcParams.update({'figure.autolayout': True})
 
 class MyMplCanvas(FigureCanvas):
 	"""Ultimately, this is a QWidget (as well as a FigureCanvasAgg, etc.)."""
@@ -71,44 +74,72 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		MyMplCanvas.__init__(self, *args, **kwargs)
 		self.axes.set_xlabel("X")
 		self.axes.set_ylabel("Y")
-		self.axes.set_title("Four Bar Linkage")
+		self.axes.set_title('Truss')
 			 
-	def plotFourBar(self,targets,mechPoints,path):
+	def plotTruss(self,nodeList,beamList):
+		# Nodelist Format: [X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]
 		self.axes.cla() #Clear axes
-		# Plot mechanism bars
-		# (crank) Base1 to point 3
-		self.axes.plot([mechPoints[0][0],mechPoints[2][0]],[mechPoints[0][1],mechPoints[2][1]],'k')
-		# (Rocker) Base 2 to point 4
-		self.axes.plot([mechPoints[1][0],mechPoints[3][0]],[mechPoints[1][1],mechPoints[3][1]],'k')
-		# (DyadBase) Point 3 to point 4        
-		self.axes.plot([mechPoints[2][0],mechPoints[3][0]],[mechPoints[2][1],mechPoints[3][1]],'k')
-		# (Dyad Side 1) Point 3 to point 5        
-		self.axes.plot([mechPoints[2][0],mechPoints[4][0]],[mechPoints[2][1],mechPoints[4][1]],'k')
-		# (Dyad Side 2) Point 4 to point 5        
-		self.axes.plot([mechPoints[3][0],mechPoints[4][0]],[mechPoints[3][1],mechPoints[4][1]],'k')
 		
-		# Plot target positons
-		xTargets = targets[1]
-		yTargets = targets[2]
-		self.axes.plot(xTargets, yTargets, 'rx')
-		# Plot actual path
-		#print(path[0])
-		self.axes.plot(path[0],path[1],'0.45')
+		# Plot roller symbol for constraints
+		rollerSize = 0.1
+		rollerForX = image.imread('image/RollerH.png')
+		rollerForY = image.imread('image/RollerV.png')
+		constraintLocation = [5,0]
+		off = 0.05
+		arrowLen = 0.5
+
+		for i in range(0,len(nodeList)):
+			if nodeList[i][2] == True: # X is constrained
+				self.axes.imshow(rollerForX, extent=(nodeList[i][0]-2*rollerSize, nodeList[i][0], 
+					nodeList[i][1] - rollerSize, nodeList[i][1] + rollerSize), zorder=2)
+			if nodeList[i][3] == True:
+				self.axes.imshow(rollerForY, extent=(nodeList[i][0]-rollerSize, nodeList[i][0] + rollerSize, 
+					nodeList[i][1] - 2*rollerSize, nodeList[i][1]), zorder=-1)
+
+			# Plot arrows for applied forces
+			if nodeList[i][6] != 0:
+				dx = arrowLen*math.cos(math.radians(nodeList[i][7]))
+				dy = arrowLen*math.sin(math.radians(nodeList[i][7]))
+				self.axes.arrow(nodeList[i][0], nodeList[i][1], dx, dy,color='r',zorder=3,shape='full',head_width=0.075, head_length=0.15)
+
+			# Plot nodes
+			self.axes.plot([nodeList[i][0]],[nodeList[i][1]],'ko')
+			self.axes.text(nodeList[i][0]+off,nodeList[i][1]+off, '%i'%(i+1), fontsize=10)
+
+			# Plot Reaction Forces
+			if nodeList[i][4] == True: # X is constrained
+				dx = -arrowLen/1.5
+				dy = 0
+				self.axes.arrow(nodeList[i][0]-dx, nodeList[i][1]-dy, dx, dy,color='g',
+					length_includes_head = True,zorder=3,shape='full',head_width=0.075, head_length=0.15)				
+			if nodeList[i][5] == True:
+				dx = 0
+				dy = arrowLen/1.5
+				self.axes.arrow(nodeList[i][0]-dx, nodeList[i][1]-dy, dx, dy,color='g',
+					length_includes_head = True,zorder=3,shape='full',head_width=0.075, head_length=0.15)				
+
+
+		# Plot mechanism bars
+		for i in range(0,len(beamList)):
+			fromNode = beamList[i][0]
+			toNode = beamList[i][1]
+			self.axes.plot([nodeList[fromNode][0],nodeList[toNode][0]],[nodeList[fromNode][1],nodeList[toNode][1]],'k')
+			midX = (nodeList[fromNode][0]+nodeList[toNode][0])/2
+			midY = (nodeList[fromNode][1] + nodeList[toNode][1])/2
+			self.axes.text(midX+off,midY+off, '%i'%(i+1), fontsize=10)
 
 		#self.axes.set_xlabel(data_label)
 		#self.axes.set_ylabel("Estimated Prob. Density Funct.")
 		#self.axes.set_title(title)
 		#self.axes.legend(shadow=True)
+		self.axes.axis('equal')
+		self.axes.margins(0.2, 0.2)
 		self.draw()
 		#print("Finished Drawing Normalized Histogram.")
 		  
 
 class Ui_MainWindow(object):
 	def setupUi(self, MainWindow):
-		MainWindow.setObjectName(_fromUtf8("MainWindow"))
-		MainWindow.resize(526, 373)
-		self.centralwidget = QWidget(MainWindow)
-		self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
 		#Builds GUI
 		# Four input tables: 
 		# one with initial node coordinates (3xn: Node,X,Y)
@@ -124,84 +155,135 @@ class Ui_MainWindow(object):
 		# max(stresses) < maxStress
 		# Any locaton constraints, such as: (generated checklist?)
 		# Node[1][0] = 1
-
-		self.load_button = QPushButton('Load Data',self)
-		self.load_button.clicked.connect(self.load_data)
+		MainWindow.setObjectName(_fromUtf8("MainWindow"))
+		MainWindow.resize(1000, 800)
+		self.centralwidget = QWidget(MainWindow)
+		self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
+		
 	 
-		self.runButton = QPushButton('Run Optimization',self)
-
+		### Controls box ###
+		controlsBox = QGroupBox("Controls")
+		controlsBoxLayout = QGridLayout()
+		# Start Button
+		self.startButton = QPushButton('Start',self)
+		controlsBoxLayout.addWidget(self.startButton,0,0)
+		# Stop Button
+		self.stopButton = QPushButton('Stop',self)
+		self.stopButton.setEnabled(False)
+		controlsBoxLayout.addWidget(self.stopButton,0,1)
+		# Damping Label and slider
+		self.dampingLabel = QLabel("Damping = 1",self)
+		controlsBoxLayout.addWidget(self.dampingLabel,1,0)
 		self.dampingSlider = QSlider(Qt.Horizontal)
 		self.dampingSlider.setMinimum(1)
 		self.dampingSlider.setMaximum(1000)
-		#self.dampingSlider.setTickInterval(10)
-		#self.dampingSlider.setSingleStep(0.01)
 		self.dampingSlider.setValue(1000)
-		self.dampingLabel = QLabel("Damping = 1",self)
+		controlsBoxLayout.addWidget(self.dampingSlider,1,1)
+		# Cross section selection dropdown menu
+		# Max Iterations text box
+		self.maxIterationsLabel = QLabel("Maximum Iterations",self)
+		controlsBoxLayout.addWidget(self.maxIterationsLabel,2,0)
+		self.maxIterationsTextBox = QLineEdit(self)
+		self.maxIterationsTextBox.setText('100')
+		controlsBoxLayout.addWidget(self.maxIterationsTextBox,2,1)
+		# Max stress text box
+		self.maxStressControlLabel = QLabel("Max Allowable Stress",self)
+		controlsBoxLayout.addWidget(self.maxStressControlLabel,3,0)
+		self.maxStressTextBox = QLineEdit(self)
+		self.maxStressTextBox.setText('1')
+		controlsBoxLayout.addWidget(self.maxStressTextBox,3,1)
+		# Density optional text box
+		self.densityLabel = QLabel("Density",self)
+		controlsBoxLayout.addWidget(self.densityLabel,4,0)
+		self.densityTextBox = QLineEdit(self)
+		self.densityTextBox.setText('1')
+		controlsBoxLayout.addWidget(self.densityTextBox,4,1)
+		controlsBox.setLayout(controlsBoxLayout)
 
 		# Results Labels
-		self.iterationLabel = QLabel("Iterations Not Started",self)
-		self.length1Label = QLabel("Length 1 Not Computed Yet",self)
-		self.length2Label = QLabel("Length 2 Not Computed Yet",self)
-		self.length3Label = QLabel("Length 3 Not Computed Yet",self)
-		self.length4Label = QLabel("Length 4 Not Computed Yet",self)
-		self.length5Label = QLabel("Length 5 Not Computed Yet",self)
-		self.base1Label = QLabel("Base 1 Location Not Computed Yet",self)
-		self.base2Label = QLabel("Base 2 Location Not Computed Yet",self)
+		#self.iterationLabel = QLabel("Iterations Not Started",self)
+		#self.length1Label = QLabel("Length 1 Not Computed Yet",self)
+		#self.length2Label = QLabel("Length 2 Not Computed Yet",self)
+		#self.length3Label = QLabel("Length 3 Not Computed Yet",self)
+		#self.length4Label = QLabel("Length 4 Not Computed Yet",self)
+		#self.length5Label = QLabel("Length 5 Not Computed Yet",self)
+		#self.base1Label = QLabel("Base 1 Location Not Computed Yet",self)
+		#self.base2Label = QLabel("Base 2 Location Not Computed Yet",self)
 
-		#Set up a Table to display data
-		self.data_table = QTableWidget()
-		self.data_table.setColumnCount(4)
-		self.data_table.setRowCount(4) # Make 1 longer than number of elements for manual addition of elements
-		self.data_table.setHorizontalHeaderLabels(['Exact Match?','Crank Angle','X','Y'])
+		### Input Tables Box ###
+		inputBox = QGroupBox('Input')
+		inputBoxLayout = QGridLayout()
+		# Node Table
+		self.nodeTableLabel = QLabel("Enter Node Positions",self)
+		self.nodeTableLabel.setAlignment(Qt.AlignCenter)
+		inputBoxLayout.addWidget(self.nodeTableLabel,0,0,1,2)		
+		self.nodesTable = QTableWidget()
+		self.nodesTable.setColumnCount(7)
+		self.nodesTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
+		self.nodesTable.setHorizontalHeaderLabels(['Node','X','Y','Fix X','Fix Y','Reaction X','Reaction Y'])
+		nodeHeader = self.nodesTable.horizontalHeader()
+		nodeHeader.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+		nodeHeader.setSectionResizeMode(1, QHeaderView.Stretch)
+		nodeHeader.setSectionResizeMode(2, QHeaderView.Stretch)
+		nodeHeader.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+		nodeHeader.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+		nodeHeader.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+		nodeHeader.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+		inputBoxLayout.addWidget(self.nodesTable,1,0,1,2)
+		# Beam Table
+		self.beamTableLabel = QLabel("Enter Beam Connections",self)
+		self.beamTableLabel.setAlignment(Qt.AlignCenter)
+		inputBoxLayout.addWidget(self.beamTableLabel,2,0)		
+		self.beamTable = QTableWidget()
+		self.beamTable.setColumnCount(3)
+		self.beamTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
+		self.beamTable.setHorizontalHeaderLabels(['Beam','From Node','To Node'])
+		beamHeader = self.beamTable.horizontalHeader()
+		beamHeader.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+		beamHeader.setSectionResizeMode(1, QHeaderView.Stretch)
+		beamHeader.setSectionResizeMode(2, QHeaderView.Stretch)
+		inputBoxLayout.addWidget(self.beamTable,3,0)
+		# External Force Table
+		self.forceTableLabel = QLabel("Enter Applied Forces",self)
+		self.forceTableLabel.setAlignment(Qt.AlignCenter)
+		inputBoxLayout.addWidget(self.forceTableLabel,2,1)		
+		self.forceTable = QTableWidget()
+		self.forceTable.setColumnCount(3)
+		self.forceTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
+		self.forceTable.setHorizontalHeaderLabels(['Node','Force','Angle'])
+		forceTableHeader = self.forceTable.horizontalHeader()
+		forceTableHeader.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+		forceTableHeader.setSectionResizeMode(1, QHeaderView.Stretch)
+		forceTableHeader.setSectionResizeMode(2, QHeaderView.Stretch)
+		inputBoxLayout.addWidget(self.forceTable,3,1)
+		inputBox.setLayout(inputBoxLayout)
 
+		# Plot
 		self.graph_canvas = MyDynamicMplCanvas(self.centralwidget, width=5, height=4, dpi=120)
-		
-
-		#Define where the widgets go in the window
-		#We start by defining some boxes that we can arrange
-		
-		#Create a GUI box to put all the table and data widgets in
-		table_box = QGroupBox("Data Table")
-		#Create a layout for that box using the vertical
-		table_box_layout = QVBoxLayout()
-		#Add the widgets into the layout
-		table_box_layout.addWidget(self.load_button)
-		table_box_layout.addWidget(self.data_table)
-
-		#setup the layout to be displayed in the box
-		table_box.setLayout(table_box_layout)
-		
+				
 		# Results Label Box 
 		resultsBox = QGroupBox("Results")
 		resultsBoxLayout = QVBoxLayout()
-		resultsBoxLayout.addWidget(self.iterationLabel)       
-		resultsBoxLayout.addWidget(self.length1Label)
-		resultsBoxLayout.addWidget(self.length2Label)
-		resultsBoxLayout.addWidget(self.length3Label)
-		resultsBoxLayout.addWidget(self.length4Label)
-		resultsBoxLayout.addWidget(self.length5Label)
-		resultsBoxLayout.addWidget(self.base1Label)
-		resultsBoxLayout.addWidget(self.base2Label)
+		#resultsBoxLayout.addWidget(self.iterationLabel)       
+		#resultsBoxLayout.addWidget(self.length1Label)
+		#resultsBoxLayout.addWidget(self.length2Label)
+		#resultsBoxLayout.addWidget(self.length3Label)
+		#resultsBoxLayout.addWidget(self.length4Label)
+		#resultsBoxLayout.addWidget(self.length5Label)
+		#resultsBoxLayout.addWidget(self.base1Label)
+		#resultsBoxLayout.addWidget(self.base2Label)
 		resultsBox.setLayout(resultsBoxLayout)
-
-		# Controls Box
-		controlsBox = QGroupBox("Controls")
-		controlsBoxLayout = QVBoxLayout()
-		controlsBoxLayout.addWidget(self.runButton)
-		controlsBoxLayout.addWidget(self.dampingLabel)
-		controlsBoxLayout.addWidget(self.dampingSlider)
-		controlsBox.setLayout(controlsBoxLayout)
 				
 		#Now we can set all the previously defined boxes into the main window
-		grid_layout = QGridLayout()
-		grid_layout.addWidget(table_box,0,0) 
-		grid_layout.addWidget(resultsBox,1,0)
-		grid_layout.addWidget(controlsBox,1,1)
-		grid_layout.addWidget(self.graph_canvas,0,1) 
-		#grid_layout.addWidget(distribution_box,1,1)
+		master_layout = QGridLayout()
+		master_layout.addWidget(inputBox,0,0) 
+		master_layout.addWidget(resultsBox,1,1)
+		master_layout.addWidget(controlsBox,1,0)
+		master_layout.addWidget(self.graph_canvas,0,1) 
+		#master_layout.addWidget(distribution_box,1,1)
 		
-		#self.centralwidget.addWidget(grid_layout)
-		self.centralwidget.setLayout(grid_layout)
+		#self.centralwidget.addWidget(master_layout)
+		self.centralwidget.setLayout(master_layout)
 		
 		self.setWindowTitle('Four Bar Linkage Optimization')
 		self.activateWindow()
@@ -215,13 +297,13 @@ class Ui_MainWindow(object):
 
 		open_file = QAction('&Open', self)
 		open_file.setShortcut('Ctrl+O')
-		open_file.setStatusTip('Load Counter Data')
+		open_file.setStatusTip('Load Truss Design')
 		open_file.triggered.connect(self.load_data)
 		file_menu.addAction(open_file)
 
 		save_file = QAction('&Save',self)
 		save_file.setShortcut('Ctrl+S')
-		save_file.setStatusTip('Save Counter Data')
+		save_file.setStatusTip('Save Optimized Design')
 		save_file.triggered.connect(self.save_data)
 		file_menu.addAction(save_file)
 

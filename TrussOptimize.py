@@ -1,5 +1,6 @@
 from PyQt5.QtCore import QThread
 import PyQt5.QtCore as QtCore
+import Optimization as opt
 
 class OptimizeThread(QThread):
 
