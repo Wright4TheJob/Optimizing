@@ -87,7 +87,6 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		constraintLocation = [5,0]
 		off = 0.05
 		arrowLen = 0.5
-
 		for i in range(0,len(nodeList)):
 			if nodeList[i][2] == True: # X is constrained
 				self.axes.imshow(rollerForX, extent=(nodeList[i][0]-2*rollerSize, nodeList[i][0], 
@@ -123,7 +122,8 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		for i in range(0,len(beamList)):
 			fromNode = beamList[i][0]
 			toNode = beamList[i][1]
-			self.axes.plot([nodeList[fromNode][0],nodeList[toNode][0]],[nodeList[fromNode][1],nodeList[toNode][1]],'k')
+			if (fromNode != -1 and toNode != -1):
+				self.axes.plot([nodeList[fromNode][0],nodeList[toNode][0]],[nodeList[fromNode][1],nodeList[toNode][1]],'k')
 			midX = (nodeList[fromNode][0]+nodeList[toNode][0])/2
 			midY = (nodeList[fromNode][1] + nodeList[toNode][1])/2
 			self.axes.text(midX+off,midY+off, '%i'%(i+1), fontsize=10)

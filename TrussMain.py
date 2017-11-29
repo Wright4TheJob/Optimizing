@@ -3,8 +3,6 @@
 # Copyright 2017
 # Written for Python 3.5.2
 
-
-
 #Import 
 import sys
 from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
@@ -38,16 +36,27 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]] 
 		self.initialBeamArray = [[0,1,1,0],[1,2,1,0],[2,0,1,0]] # [[From, To, Dim1, Dim2], [From, To, Dim1, Dim2]]
 
+		self.formerForceArray = []
+		for i in range(0,len(self.initialNodeArray)):
+			if self.initialNodeArray[i][6] != 0:
+				self.formerForceArray.append([i,self.initialNodeArray[i][6],self.initialNodeArray[i][7]])
+
 		self.damping = 1.0
 		self.iterations = 0
 		self.maxIterations = 100
 		self.mechanismStartAngle = 0.017
-
+		self.programLoaded = False
 		self.dampingSlider.valueChanged.connect(self.dampingChanged)
 		self.nodesTable.itemSelectionChanged.connect(self.selectedNodesTable)
 		self.nodesTable.cellChanged.connect(self.nodeCellChanged)
+		self.beamTable.itemSelectionChanged.connect(self.selectedBeamTable)
+		self.beamTable.cellChanged.connect(self.beamCellChanged)
+		self.forceTable.itemSelectionChanged.connect(self.selectedForcesTable)
+		self.forceTable.cellChanged.connect(self.forceCellChanged)
 		self.redrawInputTables()
 		self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+		self.programLoaded = True
+		self.userEdited = True
 
 	def startOptimization(self):
 		# Create calculation thread
@@ -94,35 +103,37 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.dampingLabel.setText("Damping = %1.2f"%(self.damping))
 
 	def nodeCellChanged(self,row,column):
-		# Add a new entry to the nodes list if last line is selected
-		if row == len(self.initialNodeArray): 
-			cell = self.nodesTable.item(row, column)
-			cellText = cell.text()
-			if cellText != '':
-				cellValue = float(cellText)
-			else:
-				cellValue = 0
-
-			if column == 1:
-				self.initialNodeArray.append([cellValue,0,0,0,0,0,0,0])
-			elif column == 2:
-				self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
+		if self.programLoaded == True:
 			
-			self.nodesTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
-		else:
-			# No action for column zero
-			# Grab float value of text input for columns 1 and 2
-			if (column == 1 or column == 2):
+			# Add a new entry to the nodes list if last line is selected
+			if row == len(self.initialNodeArray): 
 				cell = self.nodesTable.item(row, column)
-				cellText = cell.text()			
+				cellText = cell.text()
 				if cellText != '':
 					cellValue = float(cellText)
 				else:
 					cellValue = 0
-				self.initialNodeArray[row][column-1] = cellValue
-			# SelectedNodesTable already took care of checkmark assignment
-		self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
-		self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+
+				if column == 1:
+					self.initialNodeArray.append([cellValue,0,0,0,0,0,0,0])
+				elif column == 2:
+					self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
+				
+				self.nodesTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
+			else:
+				# No action for column zero
+				# Grab float value of text input for columns 1 and 2
+				if (column == 1 or column == 2):
+					cell = self.nodesTable.item(row, column)
+					cellText = cell.text()			
+					if cellText != '':
+						cellValue = float(cellText)
+					else:
+						cellValue = 0
+					self.initialNodeArray[row][column-1] = cellValue
+				# SelectedNodesTable already took care of checkmark assignment
+			self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
+			self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
 
 	def selectedNodesTable(self):
 		for currentQTableWidgetItem in self.nodesTable.selectedItems():
@@ -146,13 +157,137 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.nodesTable.clearSelection()
 		#self.redrawTable()
 
+	def beamCellChanged(self,row,column):
+		# Add a new entry to the nodes list if last line is selected
+		if self.programLoaded == True:
+			if row == len(self.initialBeamArray): 
+				cell = self.beamTable.item(row, column)
+				cellText = cell.text()
+				if cellText != '':
+					cellValue = int(cellText)
+				else:
+					cellValue = 0
+				#cell.setText('%i'%(cellValue))
+
+				if column == 1:
+					self.initialBeamArray.append([cellValue-1,0,1,1])
+					self.beamTable.setItem(row,2, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
+
+				elif column == 2:
+					self.initialBeamArray.append([0,cellValue-1,1,1])
+					self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
+				
+				self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
+				self.beamTable.setRowCount(len(self.initialBeamArray)+1)
+			else:
+				# No action for column zero
+				# Grab integer value of text input for columns 1 and 2
+				if (column == 1 or column == 2):
+					cell = self.beamTable.item(row, column)
+					cellText = cell.text()			
+					if cellText != '':
+						cellValue = int(cellText)
+					else:
+						cellValue = 0
+					self.initialBeamArray[row][column-1] = cellValue - 1
+			# SelectedNodesTable already took care of checkmark assignment
+			self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+
 	def selectedBeamTable(self):
-		print('Selected an element in beams table')
+		for currentQTableWidgetItem in self.beamTable.selectedItems():
+			row = currentQTableWidgetItem.row()
+			col = currentQTableWidgetItem.column()
+			# Do nothing for column 0
+			# Edit values and save for columns 1 and 2
+			if (col == 1 or col == 2):
+				self.beamTable.editItem(currentQTableWidgetItem)
+		self.beamTable.clearSelection()
+		#self.redrawTable()
+
+	def forceCellChanged(self,row,column):
+		# Add a new entry to the nodes list if last line is selected
+		# [X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]
+		if self.programLoaded == True:
+			if self.userEdited == True:
+				self.userEdited = False
+				forcesArray = []
+				nodeCount = len(self.initialNodeArray)
+
+				for i in range(0,nodeCount):
+					thisForce = self.initialNodeArray[i][6]
+					thisAngle = self.initialNodeArray[i][7]
+					if thisForce != 0:
+						forcesArray.append([i,thisForce,thisAngle])
+
+				if row == len(forcesArray): 
+					cell = self.forceTable.item(row, column)
+					cellText = cell.text()
+					if cellText != '':
+						cellValue = float(cellText)
+					else:
+						cellValue = 0
+					#cell.setText('%i'%(cellValue))
+					if column == 0:				
+						self.forceTable.setItem(row,1, QTableWidgetItem('1'))	
+						self.forceTable.setItem(row,2, QTableWidgetItem('0'))	
+						self.initialNodeArray[int(cellValue)-1][6] = 1
+						self.initialNodeArray[int(cellValue)-1][7] = 0
+					if column == 1:
+						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))	
+						#self.forceTable.setItem(row,2, QTableWidgetItem('0'))	
+						self.initialNodeArray[0][6] = cellValue
+						self.initialNodeArray[0][7] = 0
+
+					elif column == 2:
+						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))	
+						#self.forceTable.setItem(row,1, QTableWidgetItem('0'))	
+						self.initialNodeArray[0][6] = 0
+						self.initialNodeArray[0][7] = cellValue
+					
+					self.forceTable.setRowCount(len(forcesArray)+1)
+				else:
+					# Grab integer value of text input for columns 1 and 2
+					cell = self.forceTable.item(row, column)
+					cellText = cell.text()			
+					if cellText != '':
+						cellValue = float(cellText)
+					else:
+						cellValue = 0
+					
+					if column == 0:
+						cellValue = int(cellValue) - 1
+						# Copy values to new node
+						newNode = int(cellValue)
+						oldNode = int(self.formerForceArray[row][0])
+						self.initialNodeArray[newNode][6] = self.formerForceArray[row][1]
+						self.initialNodeArray[newNode][7] = self.formerForceArray[row][2]
+						# Clear values from old node
+						self.initialNodeArray[oldNode][6] = 0
+						self.initialNodeArray[oldNode][7] = 0
+					else:
+						forceNode = int(self.forceTable.item(row, 0).text())-1
+						self.initialNodeArray[forceNode][column+5] = cellValue
+
+				self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+				self.redrawForceTable()
+				self.userEdited = True
 
 	def selectedForcesTable(self):
-		print('Selected an element in Forces table')
+		for currentQTableWidgetItem in self.forceTable.selectedItems():
+			row = currentQTableWidgetItem.row()
+			col = currentQTableWidgetItem.column()
+			# Do nothing for column 0
+			# Edit values and save for columns 1 and 2
+			self.forceTable.editItem(currentQTableWidgetItem)
+		self.forceTable.clearSelection()
+		#self.redrawTable()
 
 	def redrawInputTables(self):
+		self.redrawNodeTable()
+		self.redrawBeamTable()
+		self.redrawForceTable()
+
+	def redrawNodeTable(self):
 		# Node Table
 		self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
 		for i in range(0,len(self.initialNodeArray)):
@@ -179,14 +314,16 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 				self.nodesTable.setItem(i,6, QTableWidgetItem('\u2714'))
 			else:
 				self.nodesTable.setItem(i,6, QTableWidgetItem(''))
-
+	
+	def redrawBeamTable(self):
 		# Beam Table
 		self.beamTable.setRowCount(len(self.initialBeamArray)+1)
 		for i in range(0,len(self.initialBeamArray)):
 			self.beamTable.setItem(i,0, QTableWidgetItem('%i'%(i+1)))
-			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][0])))
-			self.beamTable.setItem(i,2, QTableWidgetItem('%i'%(self.initialBeamArray[i][1])))	
+			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][0] + 1)))
+			self.beamTable.setItem(i,2, QTableWidgetItem('%i'%(self.initialBeamArray[i][1] + 1)))	
 
+	def redrawForceTable(self):
 		# Force Table
 		forcesCount = 0
 		for i in range(0,len(self.initialNodeArray)):
