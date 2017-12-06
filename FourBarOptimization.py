@@ -148,9 +148,11 @@ class FourBarOptimizer(QWidget):
         #self.thetaTargets = [0,90,180,270]
         #self.xTargets = [1,4,6,3]
         #self.yTargets = [1,0,1,2]
-        self.thetaTargets = [0]
-        self.xTargets = [1]
-        self.yTargets = [1]
+        self.thetaTargets = [0,90,180,270]
+        self.xTargets = [1,3,1,2]
+        self.yTargets = [1,2,2,1]
+        self.betas = [0,10,20]
+        self.gammas = [5,15,25]
         self.targets = [self.thetaTargets,self.xTargets,self.yTargets]
         self.exact = [True,True,False,True]
         self.exactSelected = sum(self.exact)
@@ -272,6 +274,14 @@ class FourBarOptimizer(QWidget):
         self.raise_()
         self.show()
    
+    def synthesizeFourBar(self,betas,gammas):
+        exactPoints = []
+        for i in range(0,len(thetaTargets)):
+            if exact[i] == True:
+                exactPoints.append([thetaTargets[i],xTargets[i],yTargets[i]])
+        delta2 = (exactPoints[1][1]-exactPoints[0][1]) + (exactPoints[1][2]-exactPoints[0][2])j
+        delta3 = (exactPoints[2][1]-exactPoints[0][1]) + (exactPoints[2][2]-exactPoints[0][2])j
+
     def load_data(self):
         #Write this function
         options = QFileDialog.Options()

@@ -874,6 +874,9 @@ def constrainedMinimum(expression,variables,startingPoint=[],inequalityConstrain
 			return
 
 		expressionHere = expressionHere.subs(rpSymbol,float(rp))
+		#print(expressionHere)
+		#print(variables)
+		#print(position)
 		slopeList = getGradient(expressionHere,variables,position,normalize=False)
 		#print("Slope values from getGradient")
 		#print(slopeList)
@@ -884,6 +887,9 @@ def constrainedMinimum(expression,variables,startingPoint=[],inequalityConstrain
 			if alphaValue != alpha[0]:
 				testLocation = []
 				for oldPosition, slope in zip(position,slopeList):
+					#print(oldPosition)
+					#print(slope)
+					#print(alphaValue)
 					testLocation.append(oldPosition-slope*alphaValue)
 
 				if method == 'ExteriorPenalty':
@@ -981,7 +987,7 @@ def constrainedMinimum(expression,variables,startingPoint=[],inequalityConstrain
 	if printResults==True:
 		print("#### - Results - ####")
 		for variable, variableValue in zip(variables,position):
-			print(variable + " = %2.6f" % (variableValue))
+			print(str(variable) + " = %2.6f" % (variableValue))
 		print("F = %2.6f" % (objectiveValue))
 	return (objectiveValue, position)
 

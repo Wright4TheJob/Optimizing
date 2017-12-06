@@ -79,7 +79,6 @@ class MyDynamicMplCanvas(MyMplCanvas):
 	def plotTruss(self,nodeList,beamList):
 		# Nodelist Format: [X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]
 		self.axes.cla() #Clear axes
-		
 		# Plot roller symbol for constraints
 		rollerSize = 0.1
 		rollerForX = image.imread('image/RollerH.png')
@@ -89,8 +88,7 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		arrowLen = 0.5
 		for i in range(0,len(nodeList)):
 			if nodeList[i][2] == True: # X is constrained
-				self.axes.imshow(rollerForX, extent=(nodeList[i][0]-2*rollerSize, nodeList[i][0], 
-					nodeList[i][1] - rollerSize, nodeList[i][1] + rollerSize), zorder=2)
+				self.axes.imshow(rollerForX, extent=(nodeList[i][0]-2*rollerSize, nodeList[i][0], nodeList[i][1] - rollerSize, nodeList[i][1] + rollerSize), zorder=2)
 			if nodeList[i][3] == True:
 				self.axes.imshow(rollerForY, extent=(nodeList[i][0]-rollerSize, nodeList[i][0] + rollerSize, 
 					nodeList[i][1] - 2*rollerSize, nodeList[i][1]), zorder=-1)
@@ -200,16 +198,6 @@ class Ui_MainWindow(object):
 		controlsBoxLayout.addWidget(self.densityTextBox,4,1)
 		controlsBox.setLayout(controlsBoxLayout)
 
-		# Results Labels
-		#self.iterationLabel = QLabel("Iterations Not Started",self)
-		#self.length1Label = QLabel("Length 1 Not Computed Yet",self)
-		#self.length2Label = QLabel("Length 2 Not Computed Yet",self)
-		#self.length3Label = QLabel("Length 3 Not Computed Yet",self)
-		#self.length4Label = QLabel("Length 4 Not Computed Yet",self)
-		#self.length5Label = QLabel("Length 5 Not Computed Yet",self)
-		#self.base1Label = QLabel("Base 1 Location Not Computed Yet",self)
-		#self.base2Label = QLabel("Base 2 Location Not Computed Yet",self)
-
 		### Input Tables Box ###
 		inputBox = QGroupBox('Input')
 		inputBoxLayout = QGridLayout()
@@ -261,17 +249,36 @@ class Ui_MainWindow(object):
 		# Plot
 		self.graph_canvas = MyDynamicMplCanvas(self.centralwidget, width=5, height=4, dpi=120)
 				
-		# Results Label Box 
+		### Results Tables Box ###
 		resultsBox = QGroupBox("Results")
-		resultsBoxLayout = QVBoxLayout()
-		#resultsBoxLayout.addWidget(self.iterationLabel)       
-		#resultsBoxLayout.addWidget(self.length1Label)
-		#resultsBoxLayout.addWidget(self.length2Label)
-		#resultsBoxLayout.addWidget(self.length3Label)
-		#resultsBoxLayout.addWidget(self.length4Label)
-		#resultsBoxLayout.addWidget(self.length5Label)
-		#resultsBoxLayout.addWidget(self.base1Label)
-		#resultsBoxLayout.addWidget(self.base2Label)
+		resultsBoxLayout = QGridLayout()
+		# Node Table
+		self.nodeResultsTableLabel = QLabel("Optimized Node Positions",self)
+		self.nodeResultsTableLabel.setAlignment(Qt.AlignCenter)
+		resultsBoxLayout.addWidget(self.nodeResultsTableLabel,0,0)		
+		self.nodesResultsTable = QTableWidget()
+		self.nodesResultsTable.setColumnCount(3)
+		self.nodesResultsTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
+		self.nodesResultsTable.setHorizontalHeaderLabels(['Node','X','Y'])
+		nodeResultsHeader = self.nodesResultsTable.horizontalHeader()
+		nodeResultsHeader.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+		nodeResultsHeader.setSectionResizeMode(1, QHeaderView.Stretch)
+		nodeResultsHeader.setSectionResizeMode(2, QHeaderView.Stretch)
+		resultsBoxLayout.addWidget(self.nodesResultsTable,1,0)
+		# Beam Table
+		self.beamResultsTableLabel = QLabel("Optimized Beam Properties",self)
+		self.beamResultsTableLabel.setAlignment(Qt.AlignCenter)
+		resultsBoxLayout.addWidget(self.beamResultsTableLabel,0,1)		
+		self.beamResultsTable = QTableWidget()
+		self.beamResultsTable.setColumnCount(4)
+		self.beamResultsTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
+		self.beamResultsTable.setHorizontalHeaderLabels(['Length','OD', 'ID', 'Stress'])
+		beamResultsHeader = self.beamResultsTable.horizontalHeader()
+		beamResultsHeader.setSectionResizeMode(0, QHeaderView.Stretch)
+		beamResultsHeader.setSectionResizeMode(1, QHeaderView.Stretch)
+		beamResultsHeader.setSectionResizeMode(2, QHeaderView.Stretch)
+		beamResultsHeader.setSectionResizeMode(3, QHeaderView.Stretch)
+		resultsBoxLayout.addWidget(self.beamResultsTable,1,1)		
 		resultsBox.setLayout(resultsBoxLayout)
 				
 		#Now we can set all the previously defined boxes into the main window

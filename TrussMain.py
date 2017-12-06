@@ -36,6 +36,9 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]] 
 		self.initialBeamArray = [[0,1,1,0],[1,2,1,0],[2,0,1,0]] # [[From, To, Dim1, Dim2], [From, To, Dim1, Dim2]]
 
+		self.currentNodeArray = self.initialNodeArray
+		self.currentBeamArray = self.initialBeamArray
+
 		self.formerForceArray = []
 		for i in range(0,len(self.initialNodeArray)):
 			if self.initialNodeArray[i][6] != 0:
@@ -104,36 +107,39 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 
 	def nodeCellChanged(self,row,column):
 		if self.programLoaded == True:
+			if self.userEdited == True:
+				self.userEdited = False
 			
-			# Add a new entry to the nodes list if last line is selected
-			if row == len(self.initialNodeArray): 
-				cell = self.nodesTable.item(row, column)
-				cellText = cell.text()
-				if cellText != '':
-					cellValue = float(cellText)
-				else:
-					cellValue = 0
-
-				if column == 1:
-					self.initialNodeArray.append([cellValue,0,0,0,0,0,0,0])
-				elif column == 2:
-					self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
-				
-				self.nodesTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
-			else:
-				# No action for column zero
-				# Grab float value of text input for columns 1 and 2
-				if (column == 1 or column == 2):
+				# Add a new entry to the nodes list if last line is selected
+				if row == len(self.initialNodeArray): 
 					cell = self.nodesTable.item(row, column)
-					cellText = cell.text()			
+					cellText = cell.text()
 					if cellText != '':
 						cellValue = float(cellText)
 					else:
 						cellValue = 0
-					self.initialNodeArray[row][column-1] = cellValue
-				# SelectedNodesTable already took care of checkmark assignment
-			self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
-			self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+
+					if column == 1:
+						self.initialNodeArray.append([cellValue,0,0,0,0,0,0,0])
+					elif column == 2:
+						self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
+					
+					self.nodesTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
+				else:
+					# No action for column zero
+					# Grab float value of text input for columns 1 and 2
+					if (column == 1 or column == 2):
+						cell = self.nodesTable.item(row, column)
+						cellText = cell.text()			
+						if cellText != '':
+							cellValue = float(cellText)
+						else:
+							cellValue = 0
+						self.initialNodeArray[row][column-1] = cellValue
+					# SelectedNodesTable already took care of checkmark assignment
+				self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
+				self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+				self.userEdited = True
 
 	def selectedNodesTable(self):
 		for currentQTableWidgetItem in self.nodesTable.selectedItems():
@@ -160,38 +166,41 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def beamCellChanged(self,row,column):
 		# Add a new entry to the nodes list if last line is selected
 		if self.programLoaded == True:
-			if row == len(self.initialBeamArray): 
-				cell = self.beamTable.item(row, column)
-				cellText = cell.text()
-				if cellText != '':
-					cellValue = int(cellText)
-				else:
-					cellValue = 0
-				#cell.setText('%i'%(cellValue))
-
-				if column == 1:
-					self.initialBeamArray.append([cellValue-1,0,1,1])
-					self.beamTable.setItem(row,2, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
-
-				elif column == 2:
-					self.initialBeamArray.append([0,cellValue-1,1,1])
-					self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
-				
-				self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
-				self.beamTable.setRowCount(len(self.initialBeamArray)+1)
-			else:
-				# No action for column zero
-				# Grab integer value of text input for columns 1 and 2
-				if (column == 1 or column == 2):
+			if self.userEdited == True:
+				self.userEdited = False
+				if row == len(self.initialBeamArray): 
 					cell = self.beamTable.item(row, column)
-					cellText = cell.text()			
+					cellText = cell.text()
 					if cellText != '':
 						cellValue = int(cellText)
 					else:
 						cellValue = 0
-					self.initialBeamArray[row][column-1] = cellValue - 1
-			# SelectedNodesTable already took care of checkmark assignment
-			self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+					#cell.setText('%i'%(cellValue))
+
+					if column == 1:
+						self.initialBeamArray.append([cellValue-1,0,1,1])
+						self.beamTable.setItem(row,2, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
+
+					elif column == 2:
+						self.initialBeamArray.append([0,cellValue-1,1,1])
+						self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
+					
+					self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
+					self.beamTable.setRowCount(len(self.initialBeamArray)+1)
+				else:
+					# No action for column zero
+					# Grab integer value of text input for columns 1 and 2
+					if (column == 1 or column == 2):
+						cell = self.beamTable.item(row, column)
+						cellText = cell.text()			
+						if cellText != '':
+							cellValue = int(cellText)
+						else:
+							cellValue = 0
+						self.initialBeamArray[row][column-1] = cellValue - 1
+				# SelectedNodesTable already took care of checkmark assignment
+				self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+				self.userEdited = True
 
 	def selectedBeamTable(self):
 		for currentQTableWidgetItem in self.beamTable.selectedItems():
@@ -219,6 +228,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 					if thisForce != 0:
 						forcesArray.append([i,thisForce,thisAngle])
 
+				self.formerForceArray = forcesArray
 				if row == len(forcesArray): 
 					cell = self.forceTable.item(row, column)
 					cellText = cell.text()
@@ -338,30 +348,43 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 				self.forceTable.setItem(i,2, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][7])))
 				currentRow = currentRow + 1
 
-	def redrawResultsLabels(self):
-		#self.iterationLabel.setText("Iteration %i"%(self.damping))
-		#self.length1Label.setText("Length 1 = %2.4f"%(self.mechanismLengths[1]))
-		#self.length2Label.setText("Length 2 = %2.4f"%(self.mechanismLengths[2]))
-		#self.length3Label.setText("Length 3 = %2.4f"%(self.mechanismLengths[3]))
-		#self.length4Label.setText("Length 4 = %2.4f"%(self.mechanismLengths[4]))
-		#self.length5Label.setText("Length 5 = %2.4f"%(self.mechanismLengths[5]))
-		#self.base1Label = QLabel("Base 1 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[0][0],self.mechanismBases[0][1]),self)
-		#self.base2Label = QLabel("Base 2 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[1][0],self.mechanismBases[1][1]),self)
-		print('Redrawing Results')
+	def redrawResultsTables(self):
+		self.redrawNodeResultsTable()
+		self.redrawBeamResultsTable()
+
+	def redrawNodeResultsTable(self):
+		self.nodesResultsTable.setRowCount(len(self.currentNodeArray))
+		for i in range(0,len(self.currentNodeArray)):
+			self.nodesResultsTable.setItem(i,0, QTableWidgetItem('%i'%(i+1)))
+			self.nodesResultsTable.setItem(i,1, QTableWidgetItem('%2.4f'%(self.currentNodeArray[i][0])))
+			self.nodesResultsTable.setItem(i,2, QTableWidgetItem('%2.4f'%(self.currentNodeArray[i][1])))	
+
+	def redrawBeamResultsTable(self):
+		self.beamResultsTable.setRowCount(len(self.currentBeamArray))
+		for i in range(0,len(self.currentBeamArray)):
+			# Calculate length
+			self.beamResultsTable.setItem(i,1, QTableWidgetItem('%2.2f'%(1)))
+			# Areas
+			self.beamResultsTable.setItem(i,2, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][2])))	
+			self.beamResultsTable.setItem(i,3, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][3])))	
+
 	def parseDesign(self,design):
-		print('going to parse design')
+		print('Do we need to parse the design?')
 
 	def packageDesign(self):
-		print('going to create design list')
+		return [self.initialNodeArray,self.initialBeamArray]
 
 	def iterationDone(self,design):
-		print(design)
+		self.currentNodeArray = list(design[0])
+		self.currentBeamArray = list(design[1])
+		self.redrawResultsTables()
+		self.graph_canvas.plotTruss(self.currentNodeArray,self.currentBeamArray)
 
 	def designOptimized(self,design):
 		self.startButton.setEnabled(True)
 		self.stopButton.setEnabled(False)
 		self.optimizeThread.terminate
-		print(design)
+		#print(design)
 
 	def vLen(self,point1,point2):
 		# takes in two points in the format [x,y] and returns the float of vector length
