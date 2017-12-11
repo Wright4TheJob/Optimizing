@@ -10,7 +10,7 @@ class OptimizeThread(QThread):
 
 	iterationDone = QtCore.Signal(object)
 	designOptimized = QtCore.Signal(object)
-	def __init__(self, design):
+	def __init__(self, design, controls):
 		QThread.__init__(self)
 		self.design = list(design)
 		self.optimizedDesign = self.design
@@ -18,13 +18,26 @@ class OptimizeThread(QThread):
 		#self.variables = list(variables)
 		self.nodes = 0
 		self.beams = 0
+		# Controls = [damping, max Iterations, max Stress, stiffness, cross section type, density]
+		self.damping = controls[0]
+		self.maxIterations = controls[1]
+		self.maxStress = controls[2]
+		# 1 = "Rectangular - Equal Thickness":
+		# 2 = "Rectangular":
+		# 3 = "Rectangular - Hollow":
+		# 4 = "Square":
+		# 5 = "Square - Hollow":
+		# 6 = "Round":
+		# 7 = "Round - Hollow":
+		self.crossSection = controls[3]
+		self.density = controls[4]
 	def __del__(self):
 		self.wait()
 
 	def runOptimization(self, design):
 		# design = [nodeArray, beamArray]
 		# Nodes = [X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]
-		# Beams = [From, To, Dim1, Dim2]
+		# Beams = [From, To, Dim1, Dim2,stress]
 		self.nodes = design[0]
 		self.beams = design[1]
 
@@ -53,12 +66,12 @@ class OptimizeThread(QThread):
 		while rp < rpMax:
 			(weight,optimumParameters) = self.numericalMin(optimumParameters,
 				rp=rp,
-				echo=False,
-				damping=0.1,
+				echo=True,
+				damping=self.damping,
 				epsilon=0.00001,
-				nMax=100,
+				nMax=self.maxIterations,
 				alpha = [0,0.01,0.02],
-				printResults=False)
+				printResults=True)
 			
 			# Return to main thread
 			optimizedNodes = []
@@ -75,7 +88,8 @@ class OptimizeThread(QThread):
 					j = j + 1
 			beamForces = self.trussForceAnalysis(optimizedNodes,self.beams)
 			#print(beamForces)
-
+			for i in range(0,len(self.beams)):
+				self.beams[i][4] = beamForces[i]
 			self.optimizedDesign = [optimizedNodes,self.beams]
 			self.iterationDone.emit(self.optimizedDesign)
 			rp = rp*1.5
@@ -128,7 +142,7 @@ class OptimizeThread(QThread):
 		beamForces = beamForces.tolist()
 		return beamForces[0]
 
-	def evaluateObjectiveFunction(self,design,crossSection=1,density=1,fMax = 10,fMin = 10,rp=1):
+	def evaluateObjectiveFunction(self,design,crossSection=1,fMax = 10,fMin = 10,rp=1):
 		
 		theseNodes = list(self.nodes)
 		j = 0
@@ -144,6 +158,8 @@ class OptimizeThread(QThread):
 
 		forces =  self.trussForceAnalysis(theseNodes,theseBeams)
 		# TODO: switch this depending on cross section parameter
+		fMax = self.maxStress
+		fMin = self.maxStress
 		area = 1
 		Ival = 1
 
@@ -162,7 +178,7 @@ class OptimizeThread(QThread):
 			yFrom = theseNodes[fromNode][1]
 			yTo = theseNodes[toNode][1]
 
-			objective = objective + area*density*self.vLen([xFrom,yFrom],[xTo,yTo])
+			objective = objective + area*self.density*self.vLen([xFrom,yFrom],[xTo,yTo])
 			
 			# Maximum tensile stress constraint
 			maxConstraintValue = forces[i] - fMax
@@ -241,6 +257,9 @@ class OptimizeThread(QThread):
 
 	def numericalMin(self,design,rp=1,echo=False,damping=0.1,epsilon=0.001,nMax=100,alpha = [0,0.01,0.02],printResults=False):
 
+		# Constants
+		alphaStarMax = 10
+		deltaMax = 10
 		i = 0
 		
 		# Loop
@@ -288,10 +307,18 @@ class OptimizeThread(QThread):
 				alphaStar = 0.1
 			else:
 				(alphaStar,bestY) = self.minimizeParabola(C)
+
+			if alphaStar > alphaStarMax:
+				alphaStar = alphaStarMax
 			# Move to position of calculated alpha
 			newPosition = []
 			for oldPosition, slope in zip(position,slopeList):
-				newPosition.append(oldPosition-slope*damping*alphaStar)
+				moveDist = slope*damping*alphaStar
+				if abs(moveDist) < deltaMax:
+					newPosition.append(oldPosition-moveDist)
+				else:
+					newPosition.append(oldPosition-moveDist/abs(moveDist)*deltaMax)
+
 			lastPosition = position
 			position = newPosition
 			objectiveValueLast = objectiveValue

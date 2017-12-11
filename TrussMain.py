@@ -3,6 +3,14 @@
 # Copyright 2017
 # Written for Python 3.5.2
 
+# TODO: Reset view to input parameters
+# TODO: Add cross sections to design variables
+# TODO: Calculate euler buckling bounds
+# TODO: Load example designs
+# TODO: Save inputs to file
+# TODO: Save optimized design to file
+# TODO: Export to OpenSCAD?
+# TODO: Detect oscillation and change damping
 #Import 
 import sys
 from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
@@ -34,7 +42,16 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		# Initialize variables
 		# [[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle],[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]]
 		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]] 
-		self.initialBeamArray = [[0,1,1,0],[1,2,1,0],[2,0,1,0]] # [[From, To, Dim1, Dim2], [From, To, Dim1, Dim2]]
+		self.initialBeamArray = [[0,1,1,0,0],[1,2,1,0,0],[2,0,1,0,0]] # [[From, To, Dim1, Dim2], [From, To, Dim1, Dim2]]
+
+		# 1 = "Rectangular - Equal Thickness":
+		# 2 = "Rectangular":
+		# 3 = "Rectangular - Hollow":
+		# 4 = "Square":
+		# 5 = "Square - Hollow":
+		# 6 = "Round":
+		# 7 = "Round - Hollow":
+		self.crossSection = 1 
 
 		self.currentNodeArray = self.initialNodeArray
 		self.currentBeamArray = self.initialBeamArray
@@ -44,10 +61,12 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			if self.initialNodeArray[i][6] != 0:
 				self.formerForceArray.append([i,self.initialNodeArray[i][6],self.initialNodeArray[i][7]])
 
-		self.damping = 1.0
+		self.damping = 0.1
 		self.iterations = 0
 		self.maxIterations = 100
-		self.mechanismStartAngle = 0.017
+		self.maxStress = 100.0
+		self.density = 1.0
+		#self.mechanismStartAngle = 0.017
 		self.programLoaded = False
 		self.dampingSlider.valueChanged.connect(self.dampingChanged)
 		self.nodesTable.itemSelectionChanged.connect(self.selectedNodesTable)
@@ -56,6 +75,8 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.beamTable.cellChanged.connect(self.beamCellChanged)
 		self.forceTable.itemSelectionChanged.connect(self.selectedForcesTable)
 		self.forceTable.cellChanged.connect(self.forceCellChanged)
+		self.maxStressTextBox.textChanged.connect(self.maxStressChanged)	
+		self.maxIterationsTextBox.textChanged.connect(self.maxIterationsChanged)	
 		self.redrawInputTables()
 		self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
 		self.programLoaded = True
@@ -64,7 +85,8 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def startOptimization(self):
 		# Create calculation thread
 		self.design = self.packageDesign()
-		self.optimizeThread = TrussOptimize.OptimizeThread(self.design)
+		controls = [self.damping,self.maxIterations,self.maxStress,self.crossSection,self.density]
+		self.optimizeThread = TrussOptimize.OptimizeThread(self.design,controls)
 		# Connect to emitted signals
 		self.optimizeThread.iterationDone.connect(self.iterationDone)
 		self.optimizeThread.designOptimized.connect(self.designOptimized)
@@ -104,6 +126,41 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def dampingChanged(self,value):
 		self.damping = float(value)/1000
 		self.dampingLabel.setText("Damping = %1.2f"%(self.damping))
+	
+	def maxStressChanged(self,newText):
+		if newText != "":
+			self.maxStress = float(newText)
+		else:
+			self.maxStress = 1.0
+		print(self.maxStress)
+
+	def maxIterationsChanged(self,newText):
+		if newText != "":
+			self.maxIterations = int(newText)
+		else:
+			self.maxIterations = 1
+
+	def densityChanged(self,newText):
+		if newText != "":
+			self.density = float(newText)
+		else:
+			self.density = 1
+
+	def crossSectionChanged(self, text):
+		if text == "Rectangular - Equal Thickness":
+			self.crossSection = 1
+		elif text == "Rectangular":
+			self.crossSection = 2
+		elif text == "Rectangular - Hollow":
+			self.crossSection = 3
+		elif text == "Square":
+			self.crossSection = 4
+		elif text == "Square - Hollow":
+			self.crossSection = 5
+		elif text == "Round":
+			self.crossSection = 6
+		elif text == "Round - Hollow":
+			self.crossSection = 7
 
 	def nodeCellChanged(self,row,column):
 		if self.programLoaded == True:
@@ -363,10 +420,21 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.beamResultsTable.setRowCount(len(self.currentBeamArray))
 		for i in range(0,len(self.currentBeamArray)):
 			# Calculate length
-			self.beamResultsTable.setItem(i,1, QTableWidgetItem('%2.2f'%(1)))
+			fromNode = self.currentBeamArray[i][0]
+			toNode = self.currentBeamArray[i][1]
+			# X Component
+			xFrom = self.currentNodeArray[fromNode][0]
+			xTo = self.currentNodeArray[toNode][0]
+			# Y Component
+			yFrom = self.currentNodeArray[fromNode][1]
+			yTo = self.currentNodeArray[toNode][1]
+			beamLen = self.vLen([xFrom,yFrom],[xTo,yTo])
+			self.beamResultsTable.setItem(i,0, QTableWidgetItem('%2.2f'%(beamLen)))
 			# Areas
-			self.beamResultsTable.setItem(i,2, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][2])))	
-			self.beamResultsTable.setItem(i,3, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][3])))	
+			self.beamResultsTable.setItem(i,1, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][2])))	
+			self.beamResultsTable.setItem(i,2, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][3])))	
+			# Stresses
+			self.beamResultsTable.setItem(i,3, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][4])))	
 
 	def parseDesign(self,design):
 		print('Do we need to parse the design?')

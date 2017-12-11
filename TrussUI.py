@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
 							 QFileDialog, QLabel, QSlider, QCheckBox, 
 							 QLineEdit, QVBoxLayout, QApplication, QPushButton,
 							 QTableWidget, QTableWidgetItem,QSizePolicy,
-							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView)
+							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView,QComboBox)
 from PyQt5.QtCore import Qt, QTimer, QCoreApplication
 from matplotlib.figure import Figure
 from matplotlib import rcParams
@@ -170,12 +170,12 @@ class Ui_MainWindow(object):
 		self.stopButton.setEnabled(False)
 		controlsBoxLayout.addWidget(self.stopButton,0,1)
 		# Damping Label and slider
-		self.dampingLabel = QLabel("Damping = 1",self)
+		self.dampingLabel = QLabel("Damping = 0.1",self)
 		controlsBoxLayout.addWidget(self.dampingLabel,1,0)
 		self.dampingSlider = QSlider(Qt.Horizontal)
 		self.dampingSlider.setMinimum(1)
 		self.dampingSlider.setMaximum(1000)
-		self.dampingSlider.setValue(1000)
+		self.dampingSlider.setValue(100)
 		controlsBoxLayout.addWidget(self.dampingSlider,1,1)
 		# Cross section selection dropdown menu
 		# Max Iterations text box
@@ -188,7 +188,7 @@ class Ui_MainWindow(object):
 		self.maxStressControlLabel = QLabel("Max Allowable Stress",self)
 		controlsBoxLayout.addWidget(self.maxStressControlLabel,3,0)
 		self.maxStressTextBox = QLineEdit(self)
-		self.maxStressTextBox.setText('1')
+		self.maxStressTextBox.setText('100')
 		controlsBoxLayout.addWidget(self.maxStressTextBox,3,1)
 		# Density optional text box
 		self.densityLabel = QLabel("Density",self)
@@ -196,6 +196,20 @@ class Ui_MainWindow(object):
 		self.densityTextBox = QLineEdit(self)
 		self.densityTextBox.setText('1')
 		controlsBoxLayout.addWidget(self.densityTextBox,4,1)
+		self.crossSectionLabel = QLabel("Cross Section",self)
+		controlsBoxLayout.addWidget(self.crossSectionLabel,5,0)
+		self.crossSectionBox = QComboBox(self)
+		self.crossSectionBox.addItem("Rectangular - Equal Thickness")
+		self.crossSectionBox.addItem("Rectangular")
+		self.crossSectionBox.addItem("Rectangular - Hollow")
+		self.crossSectionBox.addItem("Square")
+		self.crossSectionBox.addItem("Square - Hollow")
+		self.crossSectionBox.addItem("Round")
+		self.crossSectionBox.addItem("Round - Hollow")
+		self.crossSectionBox.activated[str].connect(self.crossSectionChanged)
+
+		controlsBoxLayout.addWidget(self.crossSectionBox,5,1)
+
 		controlsBox.setLayout(controlsBoxLayout)
 
 		### Input Tables Box ###
