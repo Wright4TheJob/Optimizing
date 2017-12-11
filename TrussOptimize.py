@@ -87,7 +87,6 @@ class OptimizeThread(QThread):
 					optimizedNodes[i][1] = float(optimumParameters[j])
 					j = j + 1
 			beamForces = self.trussForceAnalysis(optimizedNodes,self.beams)
-			#print(beamForces)
 			for i in range(0,len(self.beams)):
 				self.beams[i][4] = beamForces[i]
 			self.optimizedDesign = [optimizedNodes,self.beams]

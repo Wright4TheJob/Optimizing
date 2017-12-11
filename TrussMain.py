@@ -10,7 +10,10 @@
 # TODO: Save inputs to file
 # TODO: Save optimized design to file
 # TODO: Export to OpenSCAD?
-# TODO: Detect oscillation and change damping
+# TODO: Forces table bugs
+# TODO: Editing necesary before fixing axes in nodes table
+# TODO: Add beam weights as forces to truss nodes (Can it hold itself up?)
+
 #Import 
 import sys
 from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
@@ -185,19 +188,17 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 						self.initialNodeArray.append([cellValue,0,0,0,0,0,0,0])
 					elif column == 2:
 						self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
-					
-					self.nodesTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
 				else:
 					# No action for column zero
 					# Grab float value of text input for columns 1 and 2
-					if (column == 1 or column == 2):
+					if (column == 0 or column == 1):
 						cell = self.nodesTable.item(row, column)
 						cellText = cell.text()			
 						if cellText != '':
 							cellValue = float(cellText)
 						else:
 							cellValue = 0
-						self.initialNodeArray[row][column-1] = cellValue
+						self.initialNodeArray[row][column] = cellValue
 					# SelectedNodesTable already took care of checkmark assignment
 				self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
 				self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
@@ -208,18 +209,18 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			row = currentQTableWidgetItem.row()
 			col = currentQTableWidgetItem.column()
 			# Do nothing for column 0
-			# Edit values and save for columns 1 and 2
+			# Edit values and save for columns 0 and 1
 
-			# Invert chekcboxes and save for columns 3, 4, 5, and 6
-			if (col == 3 or col == 4 or col == 5 or col == 6):
-				cellValue = self.initialNodeArray[row][col-1]
-				self.initialNodeArray[row][col-1] = not self.initialNodeArray[row][col-1]
+			# Invert chekcboxes and save for columns 2, 3, 4, and 5
+			if (col == 2 or col == 3 or col == 4 or col == 5):
+				cellValue = self.initialNodeArray[row][col]
+				self.initialNodeArray[row][col] = not self.initialNodeArray[row][col]
 
-				if self.initialNodeArray[row][col-1] == True:
+				if self.initialNodeArray[row][col] == True:
 					self.nodesTable.setItem(row,col, QTableWidgetItem('\u2714'))
 				else:
 					self.nodesTable.setItem(row,col, QTableWidgetItem(''))
-			elif (col == 1 or col == 2):
+			elif (col == 0 or col == 1):
 				self.nodesTable.editItem(currentQTableWidgetItem)
 
 		self.nodesTable.clearSelection()
@@ -240,14 +241,13 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 					#cell.setText('%i'%(cellValue))
 
 					if column == 1:
-						self.initialBeamArray.append([cellValue-1,0,1,1])
-						self.beamTable.setItem(row,2, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
+						self.initialBeamArray.append([cellValue-1,0,1,0,0])
+						self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
 
 					elif column == 2:
-						self.initialBeamArray.append([0,cellValue-1,1,1])
-						self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
+						self.initialBeamArray.append([0,cellValue-1,1,0,0])
+						self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
 					
-					self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(row+1)))
 					self.beamTable.setRowCount(len(self.initialBeamArray)+1)
 				else:
 					# No action for column zero
@@ -363,37 +363,35 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		# Node Table
 		self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
 		for i in range(0,len(self.initialNodeArray)):
-			self.nodesTable.setItem(i,0, QTableWidgetItem('%i'%(i+1)))
-			self.nodesTable.setItem(i,1, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][0])))
-			self.nodesTable.setItem(i,2, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][1])))	
+			self.nodesTable.setItem(i,0, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][0])))
+			self.nodesTable.setItem(i,1, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][1])))	
 			# Fix X Checkboxes
 			if self.initialNodeArray[i][2] == True:
-				self.nodesTable.setItem(i,3, QTableWidgetItem('\u2714'))
+				self.nodesTable.setItem(i,2, QTableWidgetItem('\u2714'))
 			else:
-				self.nodesTable.setItem(i,3, QTableWidgetItem(''))
+				self.nodesTable.setItem(i,2, QTableWidgetItem(''))
 			# Fix Y Checkboxes
 			if self.initialNodeArray[i][3] == True:
-				self.nodesTable.setItem(i,4, QTableWidgetItem('\u2714'))
+				self.nodesTable.setItem(i,2, QTableWidgetItem('\u2714'))
 			else:
-				self.nodesTable.setItem(i,4, QTableWidgetItem(''))
+				self.nodesTable.setItem(i,3, QTableWidgetItem(''))
 			# Reaction X Checkboxes
 			if self.initialNodeArray[i][4] == True:
-				self.nodesTable.setItem(i,5, QTableWidgetItem('\u2714'))
+				self.nodesTable.setItem(i,4, QTableWidgetItem('\u2714'))
 			else:
 				self.nodesTable.setItem(i,5, QTableWidgetItem(''))
 			# Reaction Y Checkboxes
 			if self.initialNodeArray[i][5] == True:
-				self.nodesTable.setItem(i,6, QTableWidgetItem('\u2714'))
+				self.nodesTable.setItem(i,5, QTableWidgetItem('\u2714'))
 			else:
-				self.nodesTable.setItem(i,6, QTableWidgetItem(''))
+				self.nodesTable.setItem(i,5, QTableWidgetItem(''))
 	
 	def redrawBeamTable(self):
 		# Beam Table
 		self.beamTable.setRowCount(len(self.initialBeamArray)+1)
 		for i in range(0,len(self.initialBeamArray)):
-			self.beamTable.setItem(i,0, QTableWidgetItem('%i'%(i+1)))
-			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][0] + 1)))
-			self.beamTable.setItem(i,2, QTableWidgetItem('%i'%(self.initialBeamArray[i][1] + 1)))	
+			self.beamTable.setItem(i,0, QTableWidgetItem('%i'%(self.initialBeamArray[i][0] + 1)))
+			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][1] + 1)))	
 
 	def redrawForceTable(self):
 		# Force Table
