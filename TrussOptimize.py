@@ -259,14 +259,15 @@ class OptimizeThread(QThread):
 
 		# Constants
 		alphaStarMax = 10
-		deltaMax = 10
+		deltaMax = 100/rp
 		i = 0
-		
+		oscillationEpsilon = epsilon/100
+
 		# Loop
 		shouldContinue = True
 		position = list(design)
 		objectiveValue = self.evaluateObjectiveFunction(position,rp=rp)
-
+		lastPosition = position
 		if echo == True:
 			headerString = "Iteration\t"
 			headerString += "Design\t\t\t"
@@ -319,6 +320,7 @@ class OptimizeThread(QThread):
 				else:
 					newPosition.append(oldPosition-moveDist/abs(moveDist)*deltaMax)
 
+			twoPositionsAgo = lastPosition
 			lastPosition = position
 			position = newPosition
 			objectiveValueLast = objectiveValue
@@ -340,6 +342,13 @@ class OptimizeThread(QThread):
 				shouldContinue = False
 				if printResults == True:
 					print("Local Optimium found")
+
+			# Check oscillation
+			oscillationDelta = [abs(x - y) for x, y in zip(position,twoPositionsAgo)]
+			oscillationDelta = max(oscillationDelta)
+				
+			if oscillationDelta < oscillationEpsilon:
+				damping = damping*0.75
 
 			#print("About to check iteration maximum")
 			if i > nMax:

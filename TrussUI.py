@@ -188,7 +188,7 @@ class Ui_MainWindow(object):
 		self.maxStressControlLabel = QLabel("Max Allowable Stress",self)
 		controlsBoxLayout.addWidget(self.maxStressControlLabel,3,0)
 		self.maxStressTextBox = QLineEdit(self)
-		self.maxStressTextBox.setText('100')
+		self.maxStressTextBox.setText('10')
 		controlsBoxLayout.addWidget(self.maxStressTextBox,3,1)
 		# Density optional text box
 		self.densityLabel = QLabel("Density",self)

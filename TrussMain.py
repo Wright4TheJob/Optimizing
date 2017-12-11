@@ -64,7 +64,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.damping = 0.1
 		self.iterations = 0
 		self.maxIterations = 100
-		self.maxStress = 100.0
+		self.maxStress = 10.0
 		self.density = 1.0
 		#self.mechanismStartAngle = 0.017
 		self.programLoaded = False
@@ -94,7 +94,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.optimizeThread.start()
 
 		self.stopButton.setEnabled(True)
-		self.stopButton.clicked.connect(self.optimizeThread.terminate)
+		self.stopButton.clicked.connect(self.endOptimization)
 		self.startButton.setEnabled(False)
 
 	def load_data(self):
@@ -122,6 +122,11 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		if fileName:
 			f= open(fileName,"w+")
 			f.close() 
+
+	def endOptimization(self):
+		self.optimizeThread.terminate
+		self.stopButton.setEnabled(False)
+		self.startButton.setEnabled(True)
 
 	def dampingChanged(self,value):
 		self.damping = float(value)/1000
