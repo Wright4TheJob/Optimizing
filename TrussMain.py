@@ -6,12 +6,7 @@
 # TODO: Reset view to input parameters
 # TODO: Add cross sections to design variables
 # TODO: Calculate euler buckling bounds
-# TODO: Load example designs
-# TODO: Save inputs to file
-# TODO: Save optimized design to file
 # TODO: Export to OpenSCAD?
-# TODO: Forces table bugs
-# TODO: Editing necesary before fixing axes in nodes table
 # TODO: Add beam weights as forces to truss nodes (Can it hold itself up?)
 
 #Import 
@@ -36,6 +31,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib import rcParams
 import matplotlib.mlab as mlab
+import csv
+
 
 class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def __init__(self):
@@ -45,7 +42,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		# Initialize variables
 		# [[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle],[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]]
 		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]] 
-		self.initialBeamArray = [[0,1,1,0,0],[1,2,1,0,0],[2,0,1,0,0]] # [[From, To, Dim1, Dim2], [From, To, Dim1, Dim2]]
+		self.initialBeamArray = [[0,1,1,0,0],[1,2,1,0,0],[2,0,1,0,0]] # [[From, To, Dim1, Dim2,stress], [From, To, Dim1, Dim2,stress]]
 
 		# 1 = "Rectangular - Equal Thickness":
 		# 2 = "Rectangular":
@@ -106,15 +103,33 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		options |= QFileDialog.DontUseNativeDialog
 		fileName, _ = QFileDialog.getOpenFileName(self,
 			"QFileDialog.getOpenFileName()", 
-			"","All Files (*);;Python Files (*.py)", 
+			"","All Files (*);;Text Files (*.txt)", 
 			options=options)
 		if fileName:
-			f= open(fileName,"r")
-			if f.mode == 'r':
-				contents =f.read()
-				# Do stuff with contents
-	
-	def save_data(self):
+			self.initialNodeArray = []
+			self.initialBeamArray = []
+			with open(fileName, 'r') as fin:
+				reader = csv.reader(fin, delimiter=',')
+				for line in reader:
+					#print(line)
+					if len(line) == 8:
+						self.initialNodeArray.append([float(line[0]),float(line[1]),int(line[2]),int(line[3]),int(line[4]),int(line[5]),float(line[6]),float(line[7])])
+					elif len(line) == 5:
+						self.initialBeamArray.append([int(line[0]),int(line[1]),float(line[2]),float(line[3]),float(line[4])])
+					else:
+						print('Unexpected line length')
+			self.redrawInputTables()
+			self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+
+	def saveInputData(self):
+		design = [self.initialNodeArray,self.initialBeamArray]
+		self.saveDesign(design)
+
+	def saveOptimizedData(self):
+		design = [self.currentNodeArray,self.currentBeamArray]
+		self.saveDesign(design)
+
+	def saveDesign(self,design):
 		options = QFileDialog.Options()
 		options |= QFileDialog.DontUseNativeDialog
 		fileName, _ = QFileDialog.getSaveFileName(self,
@@ -122,9 +137,18 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			"All Files (*);;Text Files (*.txt)", 
 			options=options)
 		# Check to make sure ends in .txt
+		suffix = fileName[-4:-1] + fileName[-1]
+		if suffix != '.txt':
+			fileName = fileName + '.txt'
+
 		if fileName:
 			f= open(fileName,"w+")
+			for node in design[0]:
+				f.write("%f, %f, %i, %i, %i, %i, %f, %f \n" % (node[0],node[1],node[2],node[3],node[4],node[5],node[6],node[7]))
+			for beam in design[1]:
+				f.write("%i, %i, %f, %f, %f \n" % (beam[0],beam[1],beam[2],beam[3],beam[4]))			
 			f.close() 
+
 
 	def endOptimization(self):
 		self.optimizeThread.terminate
@@ -189,8 +213,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 					elif column == 2:
 						self.initialNodeArray.append([0,cellValue,0,0,0,0,0,0])
 				else:
-					# No action for column zero
-					# Grab float value of text input for columns 1 and 2
+					# Grab float value of text input for columns 0 and 1
 					if (column == 0 or column == 1):
 						cell = self.nodesTable.item(row, column)
 						cellText = cell.text()			
@@ -208,23 +231,24 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		for currentQTableWidgetItem in self.nodesTable.selectedItems():
 			row = currentQTableWidgetItem.row()
 			col = currentQTableWidgetItem.column()
-			# Do nothing for column 0
-			# Edit values and save for columns 0 and 1
-
 			# Invert chekcboxes and save for columns 2, 3, 4, and 5
 			if (col == 2 or col == 3 or col == 4 or col == 5):
 				cellValue = self.initialNodeArray[row][col]
 				self.initialNodeArray[row][col] = not self.initialNodeArray[row][col]
 
+				self.userEdited = False
 				if self.initialNodeArray[row][col] == True:
 					self.nodesTable.setItem(row,col, QTableWidgetItem('\u2714'))
 				else:
-					self.nodesTable.setItem(row,col, QTableWidgetItem(''))
+					self.nodesTable.setItem(row,col, QTableWidgetItem(' '))
+				self.userEdited = True
+				self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
+			# Edit values and save for columns 0 and 1
 			elif (col == 0 or col == 1):
 				self.nodesTable.editItem(currentQTableWidgetItem)
 
 		self.nodesTable.clearSelection()
-		#self.redrawTable()
+		#self.redrawNodeTable()
 
 	def beamCellChanged(self,row,column):
 		# Add a new entry to the nodes list if last line is selected
@@ -355,9 +379,11 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		#self.redrawTable()
 
 	def redrawInputTables(self):
+		self.userEdited = False
 		self.redrawNodeTable()
 		self.redrawBeamTable()
 		self.redrawForceTable()
+		self.userEdited = True
 
 	def redrawNodeTable(self):
 		# Node Table
@@ -372,14 +398,14 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 				self.nodesTable.setItem(i,2, QTableWidgetItem(''))
 			# Fix Y Checkboxes
 			if self.initialNodeArray[i][3] == True:
-				self.nodesTable.setItem(i,2, QTableWidgetItem('\u2714'))
+				self.nodesTable.setItem(i,3, QTableWidgetItem('\u2714'))
 			else:
 				self.nodesTable.setItem(i,3, QTableWidgetItem(''))
 			# Reaction X Checkboxes
 			if self.initialNodeArray[i][4] == True:
 				self.nodesTable.setItem(i,4, QTableWidgetItem('\u2714'))
 			else:
-				self.nodesTable.setItem(i,5, QTableWidgetItem(''))
+				self.nodesTable.setItem(i,4, QTableWidgetItem(''))
 			# Reaction Y Checkboxes
 			if self.initialNodeArray[i][5] == True:
 				self.nodesTable.setItem(i,5, QTableWidgetItem('\u2714'))

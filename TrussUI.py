@@ -320,11 +320,16 @@ class Ui_MainWindow(object):
 		open_file.triggered.connect(self.load_data)
 		file_menu.addAction(open_file)
 
-		save_file = QAction('&Save',self)
-		save_file.setShortcut('Ctrl+S')
-		save_file.setStatusTip('Save Optimized Design')
-		save_file.triggered.connect(self.save_data)
-		file_menu.addAction(save_file)
+		saveInput_file = QAction('&Save Input Design',self)
+		saveInput_file.setStatusTip('Save Optimized Design')
+		saveInput_file.triggered.connect(self.saveInputData)
+		file_menu.addAction(saveInput_file)
+
+		saveOptimized_file = QAction('&Save Optimized Design',self)
+		saveOptimized_file.setShortcut('Ctrl+S')
+		saveOptimized_file.setStatusTip('Save Optimized Design')
+		saveOptimized_file.triggered.connect(self.saveOptimizedData)
+		file_menu.addAction(saveOptimized_file)
 
 		exit_action = QAction('&Exit', self)        
 		exit_action.setShortcut('Ctrl+Q')
