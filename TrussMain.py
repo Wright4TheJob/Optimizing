@@ -8,6 +8,9 @@
 # TODO: Calculate euler buckling bounds
 # TODO: Export to OpenSCAD?
 # TODO: Add beam weights as forces to truss nodes (Can it hold itself up?)
+# TODO: Add progress bar corellated to Rp value
+# TODO: Show total weight
+# TODO: Convergence plot?
 
 #Import 
 import sys
@@ -164,7 +167,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			self.maxStress = float(newText)
 		else:
 			self.maxStress = 1.0
-		print(self.maxStress)
+		#print(self.maxStress)
 
 	def maxIterationsChanged(self,newText):
 		if newText != "":

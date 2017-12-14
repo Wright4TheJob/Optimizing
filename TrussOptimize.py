@@ -4,7 +4,7 @@ from sympy import *
 import sympy as sy
 import numpy as np
 import math
-from numpy.linalg import inv
+from numpy.linalg import inv,pinv
 
 class OptimizeThread(QThread):
 
@@ -14,6 +14,7 @@ class OptimizeThread(QThread):
 		QThread.__init__(self)
 		self.design = list(design)
 		self.optimizedDesign = self.design
+
 		self.objectiveSequence = []
 		#self.variables = list(variables)
 		self.nodes = 0
@@ -40,7 +41,6 @@ class OptimizeThread(QThread):
 		# Beams = [From, To, Dim1, Dim2,stress]
 		self.nodes = design[0]
 		self.beams = design[1]
-
 		# Design parameter list creation
 		designInitialPosition = []
 		for i in range(0,len(self.nodes)):
@@ -66,12 +66,12 @@ class OptimizeThread(QThread):
 		while rp < rpMax:
 			(weight,optimumParameters) = self.numericalMin(optimumParameters,
 				rp=rp,
-				echo=True,
+				echo=False,
 				damping=self.damping,
 				epsilon=0.00001,
 				nMax=self.maxIterations,
 				alpha = [0,0.01,0.02],
-				printResults=True)
+				printResults=False)
 			
 			# Return to main thread
 			optimizedNodes = []
@@ -134,8 +134,8 @@ class OptimizeThread(QThread):
 			if nodes[i][6] != 0:
 				F[2*i] = nodes[i][6]*np.cos(math.radians(nodes[i][7])) 
 				F[2*i+1] = nodes[i][6]*np.sin(math.radians(nodes[i][7])) 
-
-		Minv = inv(np.matrix(M))
+		MMatrix = np.matrix(M)
+		Minv = pinv(MMatrix)
 
 		beamForces = Minv.dot(F)
 		beamForces = beamForces.tolist()
@@ -178,20 +178,22 @@ class OptimizeThread(QThread):
 			yTo = theseNodes[toNode][1]
 
 			objective = objective + area*self.density*self.vLen([xFrom,yFrom],[xTo,yTo])
-			
-			# Maximum tensile stress constraint
-			maxConstraintValue = forces[i] - fMax
-			if maxConstraintValue > epsilon:
-				inequalityModifier =  - (2*epsilon - maxConstraintValue)/epsilon**2                  
+
+			if forces[i] > 0:
+				# Maximum tensile stress constraint
+				maxConstraintValue = forces[i] - fMax
+				if maxConstraintValue > epsilon:
+					inequalityModifier =  - (2*epsilon - maxConstraintValue)/epsilon**2                  
+				else:
+					inequalityModifier =  - 1/maxConstraintValue
 			else:
-				inequalityModifier =  - 1/maxConstraintValue
+				# Maximum compressive stress/buckling constraint
+				minConstraintValue = -forces[i] - fMin
+				if minConstraintValue > epsilon:
+					inequalityModifier =  - (2*epsilon - minConstraintValue)/epsilon**2                  
+				else:
+					inequalityModifier =  - 1/minConstraintValue
 			
-			# Maximum compressive stress/buckling constraint
-			minConstraintValue = -forces[i] - fMin
-			if minConstraintValue > epsilon:
-				inequalityModifier =  - (2*epsilon - minConstraintValue)/epsilon**2                  
-			else:
-				inequalityModifier =  - 1/minConstraintValue
 			objective = objective + inequalityModifier/rp
 
 		return objective
@@ -205,10 +207,15 @@ class OptimizeThread(QThread):
 		return length
 
 	def getNumGradient(self,design,rp = 1,delta = 0.0001):
-		startingValue = self.evaluateObjectiveFunction(design, rp = rp)
+		testDesign = list(design)
+		for v in range(0,len(design)):
+			newVariableValue = design[v] - delta/2.0
+			testDesign[v] = newVariableValue
+
+		startingValue = self.evaluateObjectiveFunction(testDesign, rp = rp)
 		slopeList = []
 		for v in range(0,len(design)):
-			newVariableValue = design[v] + delta
+			newVariableValue = design[v] + delta/2.0
 			testDesign = list(design)
 			testDesign[v] = newVariableValue
 			testObjectiveValue = self.evaluateObjectiveFunction(testDesign, rp = rp)
@@ -258,7 +265,7 @@ class OptimizeThread(QThread):
 
 		# Constants
 		alphaStarMax = 10
-		deltaMax = 100/rp
+		deltaMax = 0.25 + 100/rp
 		i = 0
 		oscillationEpsilon = epsilon/100
 
