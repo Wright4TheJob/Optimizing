@@ -8,7 +8,6 @@
 # TODO: Calculate euler buckling bounds
 # TODO: Export to OpenSCAD?
 # TODO: Add beam weights as forces to truss nodes (Can it hold itself up?)
-# TODO: Add progress bar corellated to Rp value
 # TODO: Show total weight
 # TODO: Convergence plot?
 
@@ -69,6 +68,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.maxIterations = 100
 		self.maxStress = 10.0
 		self.density = 1.0
+		self.progress = 0.0
 		#self.mechanismStartAngle = 0.017
 		self.programLoaded = False
 		self.dampingSlider.valueChanged.connect(self.dampingChanged)
@@ -477,8 +477,10 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def iterationDone(self,design):
 		self.currentNodeArray = list(design[0])
 		self.currentBeamArray = list(design[1])
+		self.progress = int(design[2]*100)
 		self.redrawResultsTables()
 		self.graph_canvas.plotTruss(self.currentNodeArray,self.currentBeamArray)
+		self.resultsBar.setValue(self.progress)
 
 	def designOptimized(self,design):
 		self.startButton.setEnabled(True)

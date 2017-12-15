@@ -62,8 +62,10 @@ class OptimizeThread(QThread):
 		rpMax = 1000000
 
 		optimumParameters = list(designInitialPosition)
-
+		n = 0.
+		nMax = 34.
 		while rp < rpMax:
+			n = n+1.0
 			(weight,optimumParameters) = self.numericalMin(optimumParameters,
 				rp=rp,
 				echo=False,
@@ -89,7 +91,8 @@ class OptimizeThread(QThread):
 			beamForces = self.trussForceAnalysis(optimizedNodes,self.beams)
 			for i in range(0,len(self.beams)):
 				self.beams[i][4] = beamForces[i]
-			self.optimizedDesign = [optimizedNodes,self.beams]
+			progress = float(n/nMax)
+			self.optimizedDesign = [optimizedNodes,self.beams,progress]
 			self.iterationDone.emit(self.optimizedDesign)
 			rp = rp*1.5
 			self.objectiveSequence.append(weight)

@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
 							 QFileDialog, QLabel, QSlider, QCheckBox, 
 							 QLineEdit, QVBoxLayout, QApplication, QPushButton,
 							 QTableWidget, QTableWidgetItem,QSizePolicy,
-							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView,QComboBox)
+							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView,QComboBox,QProgressBar)
 from PyQt5.QtCore import Qt, QTimer, QCoreApplication
 from matplotlib.figure import Figure
 from matplotlib import rcParams
@@ -264,10 +264,15 @@ class Ui_MainWindow(object):
 		### Results Tables Box ###
 		resultsBox = QGroupBox("Results")
 		resultsBoxLayout = QGridLayout()
+		self.resultsBarLabel = QLabel("Optimization Progress: ",self)
+		resultsBoxLayout.addWidget(self.resultsBarLabel,0,0)		
+
+		self.resultsBar = QProgressBar(self)
+		resultsBoxLayout.addWidget(self.resultsBar,0,1)		
 		# Node Table
 		self.nodeResultsTableLabel = QLabel("Optimized Node Positions",self)
 		self.nodeResultsTableLabel.setAlignment(Qt.AlignCenter)
-		resultsBoxLayout.addWidget(self.nodeResultsTableLabel,0,0)		
+		resultsBoxLayout.addWidget(self.nodeResultsTableLabel,1,0)		
 		self.nodesResultsTable = QTableWidget()
 		self.nodesResultsTable.setColumnCount(3)
 		self.nodesResultsTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
@@ -276,11 +281,11 @@ class Ui_MainWindow(object):
 		nodeResultsHeader.setSectionResizeMode(0, QHeaderView.ResizeToContents)
 		nodeResultsHeader.setSectionResizeMode(1, QHeaderView.Stretch)
 		nodeResultsHeader.setSectionResizeMode(2, QHeaderView.Stretch)
-		resultsBoxLayout.addWidget(self.nodesResultsTable,1,0)
+		resultsBoxLayout.addWidget(self.nodesResultsTable,2,0)
 		# Beam Table
 		self.beamResultsTableLabel = QLabel("Optimized Beam Properties",self)
 		self.beamResultsTableLabel.setAlignment(Qt.AlignCenter)
-		resultsBoxLayout.addWidget(self.beamResultsTableLabel,0,1)		
+		resultsBoxLayout.addWidget(self.beamResultsTableLabel,1,1)		
 		self.beamResultsTable = QTableWidget()
 		self.beamResultsTable.setColumnCount(4)
 		self.beamResultsTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
@@ -290,7 +295,7 @@ class Ui_MainWindow(object):
 		beamResultsHeader.setSectionResizeMode(1, QHeaderView.Stretch)
 		beamResultsHeader.setSectionResizeMode(2, QHeaderView.Stretch)
 		beamResultsHeader.setSectionResizeMode(3, QHeaderView.Stretch)
-		resultsBoxLayout.addWidget(self.beamResultsTable,1,1)		
+		resultsBoxLayout.addWidget(self.beamResultsTable,2,1)		
 		resultsBox.setLayout(resultsBoxLayout)
 				
 		#Now we can set all the previously defined boxes into the main window
