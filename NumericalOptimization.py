@@ -6,7 +6,15 @@ import FunctionApproximation as approx
 import scipy.optimize
 import scipy
 import CustomPlots
+import math
 #from sympy.mpmath import *
+
+def vlen(inputs):
+	totalSquared = 0
+	for input in inputs:
+		totalSquared += input*input
+	result = math.sqrt(totalSquared)
+	return result
 
 def degToRad(deg):
 	rad = deg/360.0
@@ -34,97 +42,36 @@ def expressionSymbols(expression):
 		expression = sy.sympify(expression)
 	return expression
 
-def evaluateExpression(expr, variables = [], values = [],**kwargs):
-	result = 0
-	#print(variables)
-	#print(values)
-
-	if isinstance(expr,str):
-		expr = sy.sympify(expr)
-
-	if len(variables) != 0 and len(values) != 0:
-		variableSymbol = []
-		if isinstance(variables[0],str) == True:
-			for variable in variables:
-				variableSymbol.append(symbols(variable))
-		else:
-			variableSymbols = variables
-
-		subsList = []
-		for variable, value in zip(variables, values):
-			subsList.append((variable,value))
-		substitutedFunction = expr.subs(subsList)
-		result = substitutedFunction.evalf()
-	else:
-		result = expr.evalf(subs=kwargs)
-
-	return result
-
-def getGradientExpression(expression,variables):
-	# Function accepts string or expression types, and list of variable strings
-	# Returns list of partial derivatives of function with repsect to variables given in list
-	variableSymbol = []
-
-	if isinstance(variables[0],str):
-		variableSymbol = []
-		for variable in variables:
-			variableSymbol.append(symbols(variable))
-	else:
-		variableSymbol = variables
-
-	#if isinstance(expression, str):
-	expression = sy.sympify(expression)
-
-	partialFunctions = []
-	for variable in variableSymbol:
-		partialFunctions.append(sy.diff(expression,variable))
-	return partialFunctions
-
-def getGradient(expression,variables,variableValues,normalize=False):
-	# Inputs: expression is a text string or sympy expression for the objective function
-	# Variables is a list of text inputs for each input variable
-	variables = variableSymbols(variables)
-
-	partials = getGradientExpression(expression,variables)
+def gradient(function,inputs,delta=0.0001,normalize=False):
+	'''returns a list of partial gradients of the function around the input point'''
+	# Inputs: function is a python function that accepts only a list of inputs as arguments
+	# Inputs is a list representing the point at which to evaluate the function.
+	# Optional: delta is the numerical step size of the gradient approximation
+	# Normalize returns the slope of each partial of the gradient divided by the total slope
 
 	slopeValues = []
-	for partial in partials:
-		slopeValues.append(evaluateExpression(partial, variables=variables, values = variableValues))
+	for i in range(0,len(inputs)):
+		negativeInputs = list(inputs)
+		negativeInputs[i] = float(negativeInputs[i]) - float(delta)
+		negativePoint = function(negativeInputs)
 
-	normalizedSlopes = []
-	slopeList = slopeValues
+		positiveInputs = list(inputs)
+		positiveInputs[i] = float(positiveInputs[i]) + float(delta)
+		positivePoint = function(positiveInputs)
+
+		slope = (positivePoint - negativePoint)/(2*delta)
+		slopeValues.append(slope)
+
 	if normalize == True:
-		for slopeValue in slopeValues:
-			normalizedSlopes.append(slopeValue/totalSlope)
-		slopeList = normalizedSlopes
-
-	return slopeList
-
-def getNumGradient(expression,variables,variableValues,normalize=False,delta = 0.001):
-	startingValue = evaluateExpression(expression, variables=variables, values = variableValues)
-	slopeList = []
-	for v in range(0,len(variables)):
-		newVariableValue = variableValues[v] + delta
-		testValueSet = list(variableValues)
-		testValueSet[v] = newVariableValue
-		testFunctionValue = evaluateExpression(expression, variables=variables, values = testValueSet)
-		slopeList.append((testFunctionValue-startingValue)/delta)
-
-	return slopeList
+		totalSlope = vlen(slopeValues)
+		for i in range(0,len(slopeValues)):
+			slopeValues[i] = slopeValues[i]/totalSlope
+	return slopeValues
 
 def hessian(expression,variables):
 	n = len(variables)
 	H = make2dList(n, n)
-	# String conversions and typecasting
-	variableSymbol = []
-	if isinstance(variables[0],str):
-		variableSymbol = []
-		for variable in variables:
-			variableSymbol.append(symbols(variable))
-	else:
-		variableSymbol = variables
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
+
 	# Core iteration function
 	for i in range(0,n):
 		firstPartial = diff(expression,variableSymbol[i])
@@ -136,49 +83,40 @@ def hessian(expression,variables):
 
 	return H
 
-def steepestDescentMinimum(expression,variables,startingPoint,epsilon=0.0001,nMax=100,damping=1,echo=False,**kwargs):
-	# Inputs: expression is a text string or sympy expression for the objective function
+def steepestDescentMinimum(function,startingPoint,epsilon=0.0001,nMax=100,damping=1,echo=False,parabolaFitStepSize = 0.1,constantStepSize = 0.1,**kwargs):
+	'''minimizes output of function using steepest descent method'''
+	# Inputs: python function which returns a single value and takes an input of a list of values
 	# Variables is a list of text inputs for each input variable
 	# StartingPoint is a vector of intial points for each input variable
 	# Convergence and timeout parameters are optional
-	alpha = [0,0.1,0.2]
+	alpha = [-parabolaFitStepSize,0,parabolaFitStepSize]
 	i = 0
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
 
 	# Loop
 	shouldContinue = True
 	position = startingPoint
-	objectiveValue = evaluateExpression(expression, variables = variables, values = position)
-	#print("F = %2.6f" % (objectiveValue))
-	# print("About to start loop")
+	objectiveValue = function(position)
+	# print("starting loop...")
 	# Print current iteration results
 	if echo == True:
-		headerString = "Iteration\t"
-		for variable in variables:
-			headerString += "%s\t" % (variable)
+		headerString = "Iteration\tPosition\t"
 		headerString += "Gradient\t"
 		headerString += "F(x)"
 		print(headerString)
 
 	while shouldContinue == True:
 		i = i+1
-		#print("Total Iterations should be  %i" %(nMax))
-		#print("Iteration %i" %(i))
 		# Get gradient at position
 		# print("About to get gradient")
-		slopeList = getGradient(expression,variables,position,normalize=True)
-		#print("Slope values from getGradient")
-		#print(slopeList)
-		# print("About to fit polynomial")
-		# Get three points in that direction at intervals of 0.5,1,2
-		functionValues = [objectiveValue]
+		slopeList = gradient(function,position)
+		# print("fitting polynomial...")
+		# Get three points in that direction at positions of alpha
+		functionValues = []
 		for alphaValue in alpha:
-			if alphaValue != alpha[0]:
-				testLocation = []
-				for oldPosition, slope in zip(position,slopeList):
-					testLocation.append(oldPosition+slope*alphaValue)
-				functionValues.append(evaluateExpression(expression, variables = variables, values = testLocation))
+			testLocation = []
+			for oldPosition, slope in zip(position,slopeList):
+				testLocation.append(oldPosition-slope*alphaValue)
+			functionValues.append(function(testLocation))
 		# Fit parabola to curve
 		C = approx.threePointQuadraticApprox(alpha, functionValues)
 		# Check parabola is concave up
@@ -186,24 +124,25 @@ def steepestDescentMinimum(expression,variables,startingPoint,epsilon=0.0001,nMa
 		alphaStar = 0.0
 		if C[2] < 0:
 			print("Fitted parabola is concave down. Minimum alpha value is not bounded.")
-			alphaStar = 1
+			alphaStar = constantStepSize
+		elif abs(C[2]) < 0.001:
+			print("Shallow gradient, using constant step size")
+			alphaStar = constantStepSize
 		else:
 			(alphaStar,bestY) = minimizeParabola(C)
 		# Move to position of calculated alpha
 		newPosition = []
 		for oldPosition, slope in zip(position,slopeList):
-			alphaStar = alphaStar*damping
-			newPosition.append(oldPosition+slope*alphaStar)
+			newPosition.append(oldPosition-slope*damping*alphaStar)
 		lastPosition = position
 		position = newPosition
 		objectiveValueLast = objectiveValue
-		objectiveValue = evaluateExpression(expression, variables = variables, values = position)
+		objectiveValue = function(position)
 
 		# Print current iteration results
 		if echo == True:
 			resultsString = "%i        \t" %(i)
-			for value in position:
-				resultsString += "%2.4f\t" % (value)
+			resultsString += "{}\t".format(position)
 			resultsString += "{}\t".format(slopeList)
 			resultsString += "%2.6f" % (objectiveValue)
 			print(resultsString)
@@ -221,8 +160,8 @@ def steepestDescentMinimum(expression,variables,startingPoint,epsilon=0.0001,nMa
 			shouldContinue = False
 
 	print("#### - Results - ####")
-	for variable, variableValue in zip(variables,position):
-		print(variable + " = %2.6f" % (variableValue))
+	print("Position is:")
+	print(position)
 	print("F = %2.6f" % (objectiveValue))
 	return (objectiveValue, position)
 
@@ -599,396 +538,136 @@ def NewtonRaphson1DFindMinUnconstrained(functionString,xStart,tolerance=0.0001,m
 
 	return x
 
-def evaluateExteriorPenalty(expression, inequalityConstraints=[], equalityConstraints=[], variables = [], values = [], rp=1, evaluate=True):
-	# returns either a floating point value or a sympify expression valid at the location selected
-	inequalityExpressions = [sy.sympify(constraint) for constraint in inequalityConstraints]
-	equalityExpressions = [sy.sympify(constraint) for constraint in equalityConstraints]
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
+def evaluateExteriorPenalty(function, position,
+	inequalityConstraints=[],
+	equalityConstraints=[], rp=1):
+	"""returns a float at the location selected with constraint penalties"""
 
-	if evaluate == True:
-		if variables and values:
-			objectiveValue = evaluateExpression(expression, variables = variables, values = values)
-		else:
-			print('Cannot evaluate Exterior Penalty function without both variables and values')
+	objectiveValue = function(position)
 
-		constraintValue = 0
-		n = len(inequalityConstraints)
-		if n > 0:
-			for constraint in inequalityExpressions:
-				constraintHere = evaluateExpression(constraint, variables = variables, values = values)
-				newConstraintValue = max(0,constraintHere)**2
-				constraintValue = constraintValue + newConstraintValue
+	penalty_total = 0
+	for constraint in inequalityConstraints:
+		penalty = constraint(position)
+		penalty = max(0,penalty)**2
+		penalty_total +=  penalty
 
-		m = len(equalityConstraints)
-		if m > 0:
-			for constraint in equalityExpressions:
-				newConstraintValue = evaluateExpression(constraint, variables = variables, values = values)**2
-				constraintValue = constraintValue + newConstraintValue
+	for constraint in equalityConstraints:
+		penalty = constraint(position)**2
+		penalty_total +=  penalty
 
-		totalValue = objectiveValue + rp * constraintValue
-		result = totalValue
-	else:
-		constraintString = ''
-		n = len(inequalityConstraints)
-		if n > 0:
-			for i in range(0,n):
-				newConstraintValue = evaluateExpression(inequalityExpressions[i], variables = variables, values = values)
-				if newConstraintValue > 0:
-					if constraintString == '':
-						constraintString = constraintString + '(' + inequalityConstraints[i] + ')**2'
-					else:
-						constraintString = constraintString + ' + (' + inequalityConstraints[i] + ')**2'
-
-
-		m = len(equalityConstraints)
-		if m > 0:
-			for j in range(0,m):
-				newConstraintValue = evaluateExpression(equalityExpressions[j], variables = variables, values = values)
-				if constraintString == '':
-					constraintString = constraintString + '(' + equalityConstraints[j] + ')**2'
-				else:
-					constraintString = constraintString + '+ (' + equalityConstraints[j] + ')**2'
-
-		constraintString = 'rp * (' + constraintString + ')'
-		returnString = expression + sy.sympify(constraintString)
-		returnString.subs(symbols('rp'),rp)
-
-		result = returnString
+	totalValue = objectiveValue + rp * penalty_total
+	result = totalValue
 
 	return result
 
-def evaluateLinearExtendedPenalty(expression, inequalityConstraints=[], equalityConstraints=[], variables = [], values = [], rp=1.0, epsilon = -9999, evaluate=True):
-	# returns either a floating point value or a sympify expression valid at the location selected
+def evaluateLinearExtendedPenalty(
+	function, position,
+	inequalityConstraints=[],
+	equalityConstraints=[],
+	rp=1.0,
+	epsilon = -9999):
+	"""returns a float at the location selected with constraint penalties"""
 
 	if epsilon == -9999:
 		epsilon = -0.2*np.sqrt(1/rp)
 
 	rpPrime = 1/rp
+	objectiveValue = function(position)
 
-	inequalityExpressions = [sy.sympify(constraint) for constraint in inequalityConstraints]
-	equalityExpressions = [sy.sympify(constraint) for constraint in equalityConstraints]
-
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
-
-	if evaluate == True:
-		if variables and values:
-			objectiveValue = evaluateExpression(expression, variables = variables, values = values)
+	inconstraintValue = 0
+	for constraint in inequalityConstraints:
+		newConstraintValue = constraint(position)
+		if newConstraintValue > epsilon:
+			inconstraintValue += - (2*epsilon - newConstraintValue)/epsilon**2
 		else:
-			print('Cannot evaluate Exterior Penalty function without both variables and values')
+			inconstraintValue = inconstraintValue - 1/newConstraintValue
 
-		inconstraintValue = 0
-		n = len(inequalityConstraints)
-		if n > 0:
-			for constraint in inequalityExpressions:
-				newConstraintValue = evaluateExpression(constraint, variables = variables, values = values)
-				if newConstraintValue > epsilon:
-					inconstraintValue = inconstraintValue - (2*epsilon - newConstraintValue)/epsilon**2
-				else:
-					inconstraintValue = inconstraintValue - 1/newConstraintValue
+	constraintValue = 0
+	for constraint in equalityConstraints:
+		newConstraintValue = constraint(position)**2
+		constraintValue = constraintValue + newConstraintValue
 
-		constraintValue = 0
-		m = len(equalityConstraints)
-		if m > 0:
-			for constraint in equalityExpressions:
-				newConstraintValue = evaluateExpression(constraint, variables = variables, values = values)**2
-				constraintValue = constraintValue + newConstraintValue
-
-		totalValue = objectiveValue + inconstraintValue/rp + constraintValue*rp
-		result = totalValue
-	else:
-		inconstraintString = ''
-		n = len(inequalityConstraints)
-		if n > 0:
-			for i in range(0,n):
-				newConstraintValue = evaluateExpression(inequalityExpressions[i], variables = variables, values = values)
-				if newConstraintValue > epsilon:
-					inconstraintString = inconstraintString + '- (2*%f - ('%(epsilon) + str(inequalityConstraints[i]) + '))/(%f**2)'%(epsilon)
-				else:
-					inconstraintString = inconstraintString + '- 1/(' + str(inequalityConstraints[i]) + ')'
-		if inconstraintString == '':
-			inconstraintString = '0'
-
-		eqConstraintString = ''
-		m = len(equalityConstraints)
-		if m > 0:
-			for j in range(0,m):
-				newConstraintValue = evaluateExpression(equalityExpressions[j], variables = variables, values = values)
-				if newConstraintValue > 0:
-					eqConstraintString = eqConstraintString + '+ (' + equalityConstraints[j] + ')**2'
-		if eqConstraintString == '':
-			eqConstraintString = '0'
-
-		#constraintString = '%f * ('%(rp) + eqConstraintString + ') + (%f)/('%(rpPrime) + inconstraintString + ')'
-		returnString = expression + rp*sy.sympify(eqConstraintString) + rpPrime*sy.sympify(inconstraintString)
-		result = returnString
+	totalValue = objectiveValue + inconstraintValue/rp + constraintValue*rp
+	result = totalValue
 
 	return result
 
-def evaluateInteriorInverseBarrier(expression, inequalityConstraints=[], equalityConstraints=[], variables = [], values = [], rp=1.0, evaluate=True):
-	# returns either a floating point value or a sympify expression valid at the location selected
+def evaluateInteriorInverseBarrierPenalty(
+	function, position,
+	inequalityConstraints=[],
+	equalityConstraints=[],
+	rp=1.0):
+	"""returns a float at the location selected with constraint penalties"""
 
-	inequalityExpressions = [sy.sympify(constraint) for constraint in inequalityConstraints]
-	equalityExpressions = [sy.sympify(constraint) for constraint in equalityConstraints]
+	objectiveValue = function(position)
 
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
-
-	if evaluate == True:
-		if variables and values:
-			objectiveValue = evaluateExpression(expression, variables = variables, values = values)
+	ineq_constraint_penalty = 0
+	for constraint in inequalityConstraints:
+		constraint_value = constraint(position)
+		if ineq_constraint_penalty <= 0:
+			ineq_constraint_penalty += - 1/constraint_value
 		else:
-			print('Cannot evaluate Interior Inverse Barrier function without both variables and values')
+			ineq_constraint_penalty += 100*rp * constraint_value
 
-		inConstraintValue = 0
-		n = len(inequalityConstraints)
-		if n > 0:
-			for constraint in inequalityExpressions:
-				newConstraintValue = evaluateExpression(constraint, variables = variables, values = values)
-				if newConstraintValue <= 0:
-					inConstraintValue = inConstraintValue - 1/newConstraintValue
-				else:
-					inConstraintValue = inConstraintValue + 100*rp * newConstraintValue
+	eq_constraint_penalty = 0
+	for constraint in equalityConstraints:
+		constraint_value = constraint(position)**2
+		eq_constraint_penalty += constraint_value
 
-
-		m = len(equalityConstraints)
-		eqConstraintValue = 0
-		if m > 0:
-			for constraint in equalityExpressions:
-				newConstraintValue = evaluateExpression(constraint, variables = variables, values = values)**2
-				eqConstraintValue = eqConstraintValue + newConstraintValue
-
-		totalValue = objectiveValue + inConstraintValue/rp + rp * eqConstraintValue
-		result = totalValue
-	else:
-		inConstraintString = ''
-		n = len(inequalityConstraints)
-		if n > 0:
-			for i in range(0,n):
-				newConstraintValue = evaluateExpression(inequalityExpressions[i], variables = variables, values = values)
-				if newConstraintValue <= 0:
-					inConstraintString = inConstraintString + '- 1/(' + str(inequalityConstraints[i]) + ')'
-				else:
-					inConstraintString = inConstraintString + ' + 100*%f*('%(rp) + str(inequalityConstraints[i]) + ')'
-
-		eqConstraintString = ''
-		m = len(equalityConstraints)
-		if m > 0:
-			for j in range(0,m):
-				newConstraintValue = evaluateExpression(equalityExpressions[j], variables = variables, values = values)
-				if newConstraintValue > 0:
-					eqConstraintString = eqConstraintString + '+ (' + equalityConstraints[j] + ')**2'
-		else:
-			eqConstraintString = eqConstraintString + '0'
-		constraintString = '%f * ('%(rp) + eqConstraintString + ') + (' + inConstraintString + ')/%f'%(rp)
-		returnString = expression + sy.sympify(constraintString)
-		result = returnString
+	result = objectiveValue + ineq_constraint_penalty/rp + rp * eq_constraint_penalty
 
 	return result
 
-def constrainedMinimum(expression,variables,startingPoint=[],inequalityConstraints=[],equalityConstraints=[],rp=1,method='ExteriorPenalty',echo=False,damping=1,epsilon=0.0001,nMax=100,alpha = [0,0.1,0.2],printResults=True):
-
+def constrainedMinimum(function,startingPoint,
+	inequalityConstraints=[],
+	equalityConstraints=[],
+	rp=1,
+	method='ExteriorPenalty',
+	echo=False,
+	damping=0.1,
+	epsilon=0.0001,
+	nMax=100,
+	parabolaFitStepSize = 0.1,
+	constantStepSize = 0.1,
+	printResults=True,
+	**kwargs):
+	'''minimizes the given function for n variables subject to boundary constraints'''
+	# Input: function whose only argument is a list of values and which returns a single value
+	# StartingPoint is a list of values corrosponding to the number of variables
+	# Constraints are functions which take a list of values and return a single value
+	# Inequality constraints return less than 0 when valid, equality equal 0
 	# Method options: 'ExteriorPenalty', 'InteriorPenalty', 'InteriorInverseBarrier','InverseLog', 'InteriorLinearExtended', 'QuadraticExtended'
-	rpSymbol = symbols("rp")
-
-	i = 0
-	if isinstance(expression, str):
-		expression = sy.sympify(expression)
-
-	if len(startingPoint) == 0:
-		startingPoint = [0] * len(variables)
-
-	# Loop
-	shouldContinue = True
-	position = startingPoint
 	if method == 'ExteriorPenalty':
-		objectiveValue = evaluateExteriorPenalty(expression,
+		penalizedFunction = lambda position: evaluateExteriorPenalty(function,
 			inequalityConstraints=inequalityConstraints,
 			equalityConstraints=equalityConstraints,
-			variables = variables,
-			values = position,
+			position = position,
 			rp = rp)
 	elif method == 'InteriorLinearExtended':
-		objectiveValue = evaluateLinearExtendedPenalty(expression,
+		penalizedFunction = lambda position: evaluateLinearExtendedPenalty(function,
 			inequalityConstraints=inequalityConstraints,
 			equalityConstraints=equalityConstraints,
-			variables = variables,
-			values = position,
+			position = position,
 			rp = rp,
-			epsilon = -9999,
-			evaluate=True)
+			epsilon = -9999)
 	elif method == 'InteriorInverseBarrier':
-		objectiveValue = evaluateInteriorInverseBarrier(expression,
+		penalizedFunction = lambda position: evaluateInteriorInverseBarrier(function,
 			inequalityConstraints=inequalityConstraints,
 			equalityConstraints=equalityConstraints,
-			variables = variables,
-			values = position,
+			position = position,
 			rp = rp)
 	else:
 		print('The method ' + method + ' is not implemented yet.')
+		return
+	(optimum, position) = steepestDescentMinimum(penalizedFunction, startingPoint,
+	epsilon=epsilon,
+	nMax=nMax,
+	damping=damping,
+	echo=echo,
+	parabolaFitStepSize = parabolaFitStepSize,
+	constantStepSize = constantStepSize,**kwargs)
 
-	if echo == True:
-		headerString = "Iteration\t"
-		for variable in variables:
-			headerString += "%s\t" % (variable)
-		headerString += "Gradient\t"
-		headerString += "F(x)"
-		print(headerString)
-
-	while shouldContinue == True:
-		i = i+1
-
-		#print("Total Iterations should be  %i" %(nMax))
-		#print("Iteration %i" %(i))
-		# Get gradient at position
-		# print("About to get gradient")
-		if method == 'ExteriorPenalty':
-			expressionHere = evaluateExteriorPenalty(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp,
-				evaluate=False)
-		elif method == 'InteriorLinearExtended':
-			expressionHere = evaluateLinearExtendedPenalty(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp,
-				epsilon = -9999,
-				evaluate=False)
-		elif method == 'InteriorInverseBarrier':
-			expressionHere = evaluateInteriorInverseBarrier(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp,
-				evaluate = False)
-		else:
-			print('The method ' + method + ' is not implemented yet.')
-			return
-
-		expressionHere = expressionHere.subs(rpSymbol,float(rp))
-		#print(expressionHere)
-		#print(variables)
-		#print(position)
-		slopeList = getGradient(expressionHere,variables,position,normalize=False)
-		#print("Slope values from getGradient")
-		#print(slopeList)
-		# print("About to fit polynomial")
-		# Get three points in that direction at intervals of 0.5,1,2
-		functionValues = [objectiveValue]
-		for alphaValue in alpha:
-			if alphaValue != alpha[0]:
-				testLocation = []
-				for oldPosition, slope in zip(position,slopeList):
-					#print(oldPosition)
-					#print(slope)
-					#print(alphaValue)
-					testLocation.append(oldPosition-slope*alphaValue)
-
-				if method == 'ExteriorPenalty':
-					functionValues.append(evaluateExteriorPenalty(expression,
-						inequalityConstraints=inequalityConstraints,
-						equalityConstraints=equalityConstraints,
-						variables = variables,
-						values = testLocation,
-						rp = rp))
-				elif method == 'InteriorLinearExtended':
-				   functionValues.append(evaluateLinearExtendedPenalty(expression,
-						inequalityConstraints=inequalityConstraints,
-						equalityConstraints=equalityConstraints,
-						variables = variables,
-						values = testLocation,
-						rp = rp,
-						epsilon = -9999))
-				elif method == 'InteriorInverseBarrier':
-					functionValues.append(evaluateInteriorInverseBarrier(expression,
-						inequalityConstraints=inequalityConstraints,
-						equalityConstraints=equalityConstraints,
-						variables = variables,
-						values = testLocation,
-						rp = rp))
-				else:
-					print('The method ' + method + ' is not implemented yet.')
-
-		# Fit parabola to curve
-		C = approx.threePointQuadraticApprox(alpha, functionValues)
-		# Check parabola is concave up
-		# Calculate alpha that gives minimum
-		alphaStar = 0.0
-		if C[2] < 0:
-			print("Fitted parabola is concave down. Minimum alpha value is not bounded.")
-			alphaStar = 1
-		else:
-			(alphaStar,bestY) = minimizeParabola(C)
-		# Move to position of calculated alpha
-		newPosition = []
-		for oldPosition, slope in zip(position,slopeList):
-			newPosition.append(oldPosition-slope*damping*alphaStar)
-		lastPosition = position
-		position = newPosition
-		objectiveValueLast = objectiveValue
-
-		if method == 'ExteriorPenalty':
-			objectiveValue = evaluateExteriorPenalty(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp)
-		elif method == 'InteriorLinearExtended':
-			objectiveValue = evaluateLinearExtendedPenalty(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp,
-				epsilon = -9999,
-				evaluate=True)
-		elif method == 'InteriorInverseBarrier':
-			objectiveValue = evaluateInteriorInverseBarrier(expression,
-				inequalityConstraints=inequalityConstraints,
-				equalityConstraints=equalityConstraints,
-				variables = variables,
-				values = position,
-				rp = rp)
-		else:
-			print('The method ' + method + ' is not implemented yet.')
-
-		# Print current iteration results
-		if echo == True:
-			resultsString = "%i        \t" %(i)
-			for value in position:
-				resultsString += "%2.4f\t" % (value)
-			resultsString += "{}\t".format(slopeList)
-			resultsString += "%2.6f" % (objectiveValue)
-			print(resultsString)
-
-		# Check convergence
-		deltaObjective = objectiveValueLast - objectiveValue
-		#print("Delta Objective = %2.4f" % (float(deltaObjective)))
-		if abs(float(deltaObjective)) < epsilon and i > 1:
-			shouldContinue = False
-			if printResults == True:
-				print("Local Optimium found")
-
-		#print("About to check iteration maximum")
-		if i > nMax:
-			if printResults == True:
-				print("Function timed out. Returning final result")
-			shouldContinue = False
-
-	if printResults==True:
-		print("#### - Results - ####")
-		for variable, variableValue in zip(variables,position):
-			print(str(variable) + " = %2.6f" % (variableValue))
-		print("F = %2.6f" % (objectiveValue))
-	return (objectiveValue, position)
+	return (optimum, position)
 
 def minimizeCubic(c):
 	# Inputs: Coefficients for polynomial equation according to the form C0 + C1*x + C2*x^2 + C3*x^3
@@ -1092,7 +771,7 @@ def goldenSectionSearch(expression,xlow,xu,epsilon = 0.001,n=100,echo=False):
 
 	return(fMin,xMin)
 
-def randomSearch2D(objectiveFunction,xStart,yStart,constraints,tolerance=0.0001, maxIterations=100):
+def randomSeaoptimimrch2D(objectiveFunction,xStart,yStart,constraints,tolerance=0.0001, maxIterations=100):
 	objectiveExpression = sy.sympify(objectiveFunction)
 	constraintExpressions = []
 	for constraint in constraints:

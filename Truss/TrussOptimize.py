@@ -74,12 +74,12 @@ class OptimizeThread(QThread):
 				nMax=self.maxIterations,
 				alpha = [0,0.01,0.02],
 				printResults=False)
-			
+
 			# Return to main thread
 			optimizedNodes = []
 			for node in self.nodes:
 				optimizedNodes.append([float(x) for x in node])
-			
+
 			j = 0
 			for i in range(0,len(self.nodes)):
 				if self.nodes[i][2] == 0:
@@ -135,8 +135,8 @@ class OptimizeThread(QThread):
 				M[2*i+1,len(beams) + j] = nodes[i][5]
 				j = j + 1
 			if nodes[i][6] != 0:
-				F[2*i] = nodes[i][6]*np.cos(math.radians(nodes[i][7])) 
-				F[2*i+1] = nodes[i][6]*np.sin(math.radians(nodes[i][7])) 
+				F[2*i] = nodes[i][6]*np.cos(math.radians(nodes[i][7]))
+				F[2*i+1] = nodes[i][6]*np.sin(math.radians(nodes[i][7]))
 		MMatrix = np.matrix(M)
 		Minv = pinv(MMatrix)
 
@@ -145,7 +145,7 @@ class OptimizeThread(QThread):
 		return beamForces[0]
 
 	def evaluateObjectiveFunction(self,design,crossSection=1,fMax = 10,fMin = 10,rp=1):
-		
+
 		theseNodes = list(self.nodes)
 		j = 0
 		for i in range(0,len(self.nodes)):
@@ -155,7 +155,7 @@ class OptimizeThread(QThread):
 			if self.nodes[i][3] == 0:
 				theseNodes[i][1] = float(design[j])
 				j = j + 1
-		
+
 		theseBeams = list(self.beams)
 
 		forces =  self.trussForceAnalysis(theseNodes,theseBeams)
@@ -186,17 +186,17 @@ class OptimizeThread(QThread):
 				# Maximum tensile stress constraint
 				maxConstraintValue = forces[i] - fMax
 				if maxConstraintValue > epsilon:
-					inequalityModifier =  - (2*epsilon - maxConstraintValue)/epsilon**2                  
+					inequalityModifier =  - (2*epsilon - maxConstraintValue)/epsilon**2
 				else:
 					inequalityModifier =  - 1/maxConstraintValue
 			else:
 				# Maximum compressive stress/buckling constraint
 				minConstraintValue = -forces[i] - fMin
 				if minConstraintValue > epsilon:
-					inequalityModifier =  - (2*epsilon - minConstraintValue)/epsilon**2                  
+					inequalityModifier =  - (2*epsilon - minConstraintValue)/epsilon**2
 				else:
 					inequalityModifier =  - 1/minConstraintValue
-			
+
 			objective = objective + inequalityModifier/rp
 
 		return objective
@@ -280,13 +280,13 @@ class OptimizeThread(QThread):
 		if echo == True:
 			headerString = "Iteration\t"
 			headerString += "Design\t\t\t"
-			#headerString += "Gradient\t"        
+			#headerString += "Gradient\t"
 			headerString += "F(x)"
 			print(headerString)
 
 		while shouldContinue == True:
 			i = i+1
-		
+
 			#print("Total Iterations should be  %i" %(nMax))
 			#print("Iteration %i" %(i))
 			# Get gradient at position
@@ -355,7 +355,7 @@ class OptimizeThread(QThread):
 			# Check oscillation
 			oscillationDelta = [abs(x - y) for x, y in zip(position,twoPositionsAgo)]
 			oscillationDelta = max(oscillationDelta)
-				
+
 			if oscillationDelta < oscillationEpsilon:
 				damping = damping*0.75
 
@@ -377,6 +377,5 @@ class OptimizeThread(QThread):
 	def run(self):
 		self.design = self.runOptimization(self.design)
 		self.designOptimized.emit(self.design)
-		
+
 		self.sleep(2)
-		
