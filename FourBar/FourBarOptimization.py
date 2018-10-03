@@ -5,10 +5,10 @@
 
 
 
-#Import 
+#Import
 import sys
-from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
-                             QFileDialog, QLabel, QSlider, QCheckBox, 
+from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
+                             QFileDialog, QLabel, QSlider, QCheckBox,
                              QLineEdit, QVBoxLayout, QApplication, QPushButton,
                              QTableWidget, QTableWidgetItem,QSizePolicy,
                              QGridLayout,QGroupBox, QMainWindow,QAction)
@@ -33,9 +33,9 @@ rcParams.update({'figure.autolayout': True})
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        
+
         self.initUI()
-   
+
     def initUI(self):
         menuBar = self.menuBar()
 
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
         save_file.triggered.connect(self.save_data)
         file_menu.addAction(save_file)
 
-        exit_action = QAction(None, '&Exit', self)        
+        exit_action = QAction(None, '&Exit', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit application')
         exit_action.triggered.connect(self.close) #This is built in
@@ -66,7 +66,7 @@ class MyMplCanvas(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = self.fig.add_subplot(111)
-        
+
         FigureCanvas.__init__(self, self.fig)
         self.setParent(parent)
 
@@ -75,7 +75,7 @@ class MyMplCanvas(FigureCanvas):
                                    QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
         FigureCanvas.mpl_connect(self,'button_press_event', self.double_click)
-        
+
     def export(self,event):
         filename = "ExportedGraph.pdf"
         self.fig.savefig(filename)
@@ -89,10 +89,10 @@ class MyMplCanvas(FigureCanvas):
         msg.setWindowModality(Qt.ApplicationModal)
         msg.exec_()
         print("Exported PDF file")
-        
+
     def double_click(self, event):
         FigureCanvas.mpl_connect(self,'button_press_event', self.export)
-        
+
 class MyDynamicMplCanvas(MyMplCanvas):
     """A canvas that updates itself frequently with a new plot."""
     def __init__(self, *args, **kwargs):
@@ -100,7 +100,7 @@ class MyDynamicMplCanvas(MyMplCanvas):
         self.axes.set_xlabel("X")
         self.axes.set_ylabel("Y")
         self.axes.set_title("Four Bar Linkage")
-             
+
     def plotFourBar(self,targets,mechPoints,path):
         self.axes.cla() #Clear axes
         # Plot mechanism bars
@@ -108,13 +108,13 @@ class MyDynamicMplCanvas(MyMplCanvas):
         self.axes.plot([mechPoints[0][0],mechPoints[2][0]],[mechPoints[0][1],mechPoints[2][1]],'k')
         # (Rocker) Base 2 to point 4
         self.axes.plot([mechPoints[1][0],mechPoints[3][0]],[mechPoints[1][1],mechPoints[3][1]],'k')
-        # (DyadBase) Point 3 to point 4        
+        # (DyadBase) Point 3 to point 4
         self.axes.plot([mechPoints[2][0],mechPoints[3][0]],[mechPoints[2][1],mechPoints[3][1]],'k')
-        # (Dyad Side 1) Point 3 to point 5        
+        # (Dyad Side 1) Point 3 to point 5
         self.axes.plot([mechPoints[2][0],mechPoints[4][0]],[mechPoints[2][1],mechPoints[4][1]],'k')
-        # (Dyad Side 2) Point 4 to point 5        
+        # (Dyad Side 2) Point 4 to point 5
         self.axes.plot([mechPoints[3][0],mechPoints[4][0]],[mechPoints[3][1],mechPoints[4][1]],'k')
-        
+
         # Plot target positons
         xTargets = targets[1]
         yTargets = targets[2]
@@ -129,8 +129,8 @@ class MyDynamicMplCanvas(MyMplCanvas):
         #self.axes.legend(shadow=True)
         self.draw()
         #print("Finished Drawing Normalized Histogram.")
-          
-        
+
+
 class FourBarOptimizer(QWidget):
 
     def __init__(self):
@@ -138,7 +138,7 @@ class FourBarOptimizer(QWidget):
 
         # Upon startup, run a user interface routine
         self.init_ui()
-              
+
     def init_ui(self):
         self.damping = 0.1
         self.iterations = 0
@@ -157,15 +157,13 @@ class FourBarOptimizer(QWidget):
         self.exact = [True,True,False,True]
         self.exactSelected = sum(self.exact)
         self.fixedPointCount = min(len(self.thetaTargets),len(self.xTargets),len(self.yTargets))
-        # Mechanism encoding: [z1, z2, z3, z4, z5, x1,y1,x2,y2]
-        # or more compact: [[lengths],[base1],[base2],]
-        # or point based: [[Base1X,Base1Y],[Base2X,base2Y],[point3],[point4],[point5]]
+        # Mechanism encoding: [[lengths],[base1],[base2],]
         self.initialMechanismBases = [[0.06,0.04],[1.5,-0.02]]
         baselength = self.vLen(self.initialMechanismBases[0],self.initialMechanismBases[1])
         #self.initialMechanismLengths = [baselength,0.3,0.75,0.6,1,1.5]
         self.initialMechanismLengths = [baselength,0.25, 1.1,0.83,1.25,1.46]
         self.initialAlpha = 0.75
-        
+
         # Four Bar Properties
         self.mechanismBases = self.initialMechanismBases
         self.mechanismLengths = self.initialMechanismLengths
@@ -181,7 +179,7 @@ class FourBarOptimizer(QWidget):
 
         self.load_button = QPushButton('Load Data',self)
         self.load_button.clicked.connect(self.load_data)
-     
+
         self.runButton = QPushButton('Run Optimization',self)
         self.runButton.clicked.connect(self.runFourBarOptimization)
 
@@ -216,7 +214,7 @@ class FourBarOptimizer(QWidget):
 
         self.main_widget = QWidget(self)
         self.graph_canvas = MyDynamicMplCanvas(self.main_widget, width=5, height=4, dpi=120)
-        
+
         targets = [self.thetaTargets,self.xTargets,self.yTargets]
         self.calculateActualPath(self.plotAngles)
         path = [self.pathX,self.pathY]
@@ -225,7 +223,7 @@ class FourBarOptimizer(QWidget):
 
         #Define where the widgets go in the window
         #We start by defining some boxes that we can arrange
-        
+
         #Create a GUI box to put all the table and data widgets in
         table_box = QGroupBox("Data Table")
         #Create a layout for that box using the vertical
@@ -236,11 +234,11 @@ class FourBarOptimizer(QWidget):
 
         #setup the layout to be displayed in the box
         table_box.setLayout(table_box_layout)
-        
-        # Results Label Box 
+
+        # Results Label Box
         resultsBox = QGroupBox("Results")
         resultsBoxLayout = QVBoxLayout()
-        resultsBoxLayout.addWidget(self.iterationLabel)       
+        resultsBoxLayout.addWidget(self.iterationLabel)
         resultsBoxLayout.addWidget(self.length1Label)
         resultsBoxLayout.addWidget(self.length2Label)
         resultsBoxLayout.addWidget(self.length3Label)
@@ -257,23 +255,23 @@ class FourBarOptimizer(QWidget):
         controlsBoxLayout.addWidget(self.dampingLabel)
         controlsBoxLayout.addWidget(self.dampingSlider)
         controlsBox.setLayout(controlsBoxLayout)
-                
+
         #Now we can set all the previously defined boxes into the main window
         grid_layout = QGridLayout()
-        grid_layout.addWidget(table_box,0,0) 
+        grid_layout.addWidget(table_box,0,0)
         grid_layout.addWidget(resultsBox,1,0)
         grid_layout.addWidget(controlsBox,1,1)
-        grid_layout.addWidget(self.graph_canvas,0,1) 
+        grid_layout.addWidget(self.graph_canvas,0,1)
         #grid_layout.addWidget(distribution_box,1,1)
-        
+
         self.redrawTable()
         self.setLayout(grid_layout)
-        
+
         self.setWindowTitle('Four Bar Linkage Optimization')
         self.activateWindow()
         self.raise_()
         self.show()
-   
+
     def synthesizeFourBar(self,betas,gammas):
         exactPoints = []
         for i in range(0,len(thetaTargets)):
@@ -287,27 +285,27 @@ class FourBarOptimizer(QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,
-            "QFileDialog.getOpenFileName()", 
-            "","All Files (*);;Python Files (*.py)", 
+            "QFileDialog.getOpenFileName()",
+            "","All Files (*);;Python Files (*.py)",
             options=options)
         if fileName:
             f= open(fileName,"r")
             if f.mode == 'r':
                 contents =f.read()
                 # Do stuff with contents
-    
+
     def save_data(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self,
             "QFileDialog.getSaveFileName()","",
-            "All Files (*);;Text Files (*.txt)", 
+            "All Files (*);;Text Files (*.txt)",
             options=options)
         # Check to make sure ends in .txt
         if fileName:
             f= open(fileName,"w+")
             f.write("%i" % (self.counter_value))
-            f.close() 
+            f.close()
 
     def calculateActualPath(self,angleList):
         xActual = [0]*len(angleList)
@@ -336,7 +334,7 @@ class FourBarOptimizer(QWidget):
 
         return (Cx,Cy)
 
-    def calculateFourBarPoint(self,alphaInput):        
+    def calculateFourBarPoint(self,alphaInput):
         # lengths is in format [base, z1,z2,z3,z4,z5]
         # bases are in format [[base1X,base1Y],[base2X,base2Y]]
         # alpha is a single float for crank angle from horizontal
@@ -348,7 +346,7 @@ class FourBarOptimizer(QWidget):
         point1 = [0,0]
         point1[0] = bases[0][0] + length[1]*np.cos(alpha)
         point1[1] = bases[0][1] + length[1]*np.sin(alpha)
-        
+
         baseRun = np.float64(bases[1][0] - bases[0][0])
         baseRise = np.float64(bases[1][1]-bases[0][1])
         #print(baseRun)
@@ -385,7 +383,7 @@ class FourBarOptimizer(QWidget):
         pointC = [0,0]
         pointC[0] = point1[0]+length[2]*np.cos(theta5 + dyadAngle1)
         pointC[1] = point1[1]+length[2]*np.sin(theta5 + dyadAngle1)
-        
+
         self.mechanismPoints = [bases[0],bases[1],point1,point2,pointC]
 
         return self.mechanismPoints
@@ -393,7 +391,7 @@ class FourBarOptimizer(QWidget):
     def runFourBarOptimization(self):
         # Calculate betas and gammas for target design - 3 points
         # Evaluate error from target path
-        # 
+        #
         print('Starting Optimization')
         (xExpression,yExpression) = self.fourBarExpression()
         objectiveFunction = 0
@@ -433,12 +431,12 @@ class FourBarOptimizer(QWidget):
         print('Set up initial constants and expressions')
         self.iterations = 0
         position = startingPoint
-        objectiveValue = opt.evaluateLinearExtendedPenalty(expression, 
-            inequalityConstraints=inequalityConstraints, 
-            equalityConstraints=equalityConstraints, 
-            variables = variables, 
-            values = position, 
-            rp = rp,  
+        objectiveValue = opt.evaluateLinearExtendedPenalty(expression,
+            inequalityConstraints=inequalityConstraints,
+            equalityConstraints=equalityConstraints,
+            variables = variables,
+            values = position,
+            rp = rp,
             evaluate=True)
 
         print('Calculated initial objective function:')
@@ -449,14 +447,14 @@ class FourBarOptimizer(QWidget):
             # plot
             ########################
             self.iterations = self.iterations + 1
-            
+
             print('Calculating expression for this rp')
-            expressionHere = opt.evaluateLinearExtendedPenalty(expression, 
-                inequalityConstraints=inequalityConstraints, 
-                equalityConstraints=equalityConstraints, 
-                variables = variables, 
-                values = position, 
-                rp = rp, 
+            expressionHere = opt.evaluateLinearExtendedPenalty(expression,
+                inequalityConstraints=inequalityConstraints,
+                equalityConstraints=equalityConstraints,
+                variables = variables,
+                values = position,
+                rp = rp,
                 evaluate=False)
             expressionHere = expressionHere.subs(rpSymbol,float(rp))
             print('Calculating gradients:')
@@ -475,11 +473,11 @@ class FourBarOptimizer(QWidget):
                         testLocation.append(oldPosition-slope*alphaValue)
                     #print('Location to test:')
                     #print(testLocation)
-                    functionValues.append(opt.evaluateLinearExtendedPenalty(expression, 
-                        inequalityConstraints=inequalityConstraints, 
-                        equalityConstraints=equalityConstraints, 
-                        variables = variables, 
-                        values = testLocation, 
+                    functionValues.append(opt.evaluateLinearExtendedPenalty(expression,
+                        inequalityConstraints=inequalityConstraints,
+                        equalityConstraints=equalityConstraints,
+                        variables = variables,
+                        values = testLocation,
                         rp = rp))
             print('Calculated test positions')
             # Fit parabola to curve
@@ -505,12 +503,12 @@ class FourBarOptimizer(QWidget):
             position = newPosition
             objectiveValueLast = objectiveValue
             print('Finding New error')
-            objectiveValue = opt.evaluateLinearExtendedPenalty(expression, 
-                inequalityConstraints=inequalityConstraints, 
-                equalityConstraints=equalityConstraints, 
-                variables = variables, 
-                values = position, 
-                rp = rp, 
+            objectiveValue = opt.evaluateLinearExtendedPenalty(expression,
+                inequalityConstraints=inequalityConstraints,
+                equalityConstraints=equalityConstraints,
+                variables = variables,
+                values = position,
+                rp = rp,
                 evaluate=True)
             print('New error is:')
             print(objectiveValue)
@@ -529,7 +527,7 @@ class FourBarOptimizer(QWidget):
             path = [self.pathX,self.pathY]
             mechanismPoints = self.calculateFourBarPoint(self.initialAlpha)
             targets = [self.thetaTargets,self.xTargets,self.yTargets]
-            path = [self.pathX,self.pathY]        
+            path = [self.pathX,self.pathY]
 
             self.graph_canvas.plotFourBar(targets, mechanismPoints,path)
 
@@ -579,7 +577,7 @@ class FourBarOptimizer(QWidget):
                 cell = self.data_table.item(row, column)
                 cellText = cell.text()
                 cellValue = float(cellText)
-                self.xTargets.append(cellValue) 
+                self.xTargets.append(cellValue)
                 self.thetaTargets.append(0)
                 self.ytargets.append(0)
                 self.exact.append(False)
@@ -589,7 +587,7 @@ class FourBarOptimizer(QWidget):
                 cellValue = float(cellText)
                 self.thetaTargets.append(0)
                 self.xTargets.append(0)
-                self.yTargets.append(cellValue)            
+                self.yTargets.append(cellValue)
                 self.exact.append(False)
         else:
             if column == 1:
@@ -630,7 +628,7 @@ class FourBarOptimizer(QWidget):
                 self.data_table.setItem(currentQTableWidgetItem.row(),0, QTableWidgetItem('\u2714'))
             else:
                 self.data_table.setItem(currentQTableWidgetItem.row(),0, QTableWidgetItem(''))
-        self.exactSelected = sum(self.exact)        
+        self.exactSelected = sum(self.exact)
         self.data_table.clearSelection()
         #self.redrawTable()
 
