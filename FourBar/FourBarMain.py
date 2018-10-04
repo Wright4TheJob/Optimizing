@@ -85,10 +85,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         self.redrawInputTables()
 
         # Display mechanims plot
-        self.calculateActualPath(self.plotAngles)
-        path = [self.pathX,self.pathY]
-        pose = self.calculateFourBarPoint(self.initialAlpha)
-        self.graph_canvas.plotFourBar(self.targets, pose,path)
+        self.redraw_mechanism()
 
         self.programLoaded = True
         self.userEdited = True
@@ -97,6 +94,11 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         # Create calculation thread
         self.design = self.packageDesign()
         controls = [self.damping,self.maxIterations]
+        targets_to_send = self.targets
+        for i in range(len(targets_to_send)):
+            target = targets_to_send[i]
+            target[0] = target[0]*2*np.pi/360
+            targets_to_send[i] = target
         self.optimizeThread = FourBarOptimize.OptimizeThread(self.design,self.targets,controls)
         # Connect to emitted signals
         self.optimizeThread.iterationDone.connect(self.iterationDone)
@@ -264,6 +266,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
 
     def redrawResults(self):
         self.redrawResultsLabels()
+        self.redraw_mechanism()
 
     def redrawResultsLabels(self):
         #self.iterationLabel.setText("Iteration %i"%(self.damping))
@@ -275,6 +278,14 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         self.base1Label.setText("Base 1 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[0][0],self.mechanismBases[0][1]))
         self.base2Label.setText("Base 2 Location  = (%2.4f, %2.4f)"%(self.mechanismBases[1][0],self.mechanismBases[1][1]))
 
+    def redraw_mechanism(self):
+        # Display mechanims plot
+        self.calculateActualPath(self.plotAngles)
+        path = [self.pathX,self.pathY]
+        pose = self.calculateFourBarPoint(self.initialAlpha)
+        self.graph_canvas.plotFourBar(self.targets, pose,path)
+
+
     def parseDesign(self,design):
         print('Do we need to parse the design?')
 
@@ -283,9 +294,13 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         return self.mechanismLengths + self.mechanismBases[0] + self.mechanismBases[1]
 
     def iterationDone(self,design):
-        #self.currentNodeArray = list(design[0])
-        #self.currentBeamArray = list(design[1])
+        self.mechanismBases = [
+            [design[5],design[6]],
+            [design[7],design[8]]
+        ]
+        self.mechanismLengths = list(design[0:5])
         #self.progress = int(design[2]*100)
+        print(design)
         self.redrawResults()
         self.resultsBar.setValue(self.progress)
 
@@ -339,12 +354,12 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
             if baseRun > 0:
                 baseAngle = 0
             elif baseRun < 0:
-                baseAngle = pi()
+                baseAngle = np.pi
         elif baseRun == 0:
             if baseRise > 0:
-                baseAngle = pi()/2
+                baseAngle = np.pi/2
             elif baseRise < 0:
-                baseAngle = 3*pi()/2
+                baseAngle = 3*np.pi/2
         else:
             baseAngle = np.arctan(baseRise/baseRun)
 

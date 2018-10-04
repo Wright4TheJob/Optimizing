@@ -11,10 +11,10 @@
 # TODO: Show total weight
 # TODO: Convergence plot?
 
-#Import 
+#Import
 import sys
-from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
-							 QFileDialog, QLabel, QSlider, QCheckBox, 
+from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
+							 QFileDialog, QLabel, QSlider, QCheckBox,
 							 QLineEdit, QVBoxLayout, QApplication, QPushButton,
 							 QTableWidget, QTableWidgetItem,QSizePolicy,
 							 QGridLayout,QGroupBox, QMainWindow,QAction)
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.startButton.clicked.connect(self.startOptimization)
 		# Initialize variables
 		# [[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle],[X,Y,Fix X, Fix Y, Rx, Ry,Applied Force, Force Angle]]
-		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]] 
+		self.initialNodeArray = [[0,0,1,1,0,0,1,270],[5,0,1,0,1,1,0,0],[5,3,1,0,1,0,0,0]]
 		self.initialBeamArray = [[0,1,1,0,0],[1,2,1,0,0],[2,0,1,0,0]] # [[From, To, Dim1, Dim2,stress], [From, To, Dim1, Dim2,stress]]
 
 		# 1 = "Rectangular - Equal Thickness":
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		# 5 = "Square - Hollow":
 		# 6 = "Round":
 		# 7 = "Round - Hollow":
-		self.crossSection = 1 
+		self.crossSection = 1
 
 		self.currentNodeArray = self.initialNodeArray
 		self.currentBeamArray = self.initialBeamArray
@@ -78,8 +78,8 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.beamTable.cellChanged.connect(self.beamCellChanged)
 		self.forceTable.itemSelectionChanged.connect(self.selectedForcesTable)
 		self.forceTable.cellChanged.connect(self.forceCellChanged)
-		self.maxStressTextBox.textChanged.connect(self.maxStressChanged)	
-		self.maxIterationsTextBox.textChanged.connect(self.maxIterationsChanged)	
+		self.maxStressTextBox.textChanged.connect(self.maxStressChanged)
+		self.maxIterationsTextBox.textChanged.connect(self.maxIterationsChanged)
 		self.redrawInputTables()
 		self.graph_canvas.plotTruss(self.initialNodeArray,self.initialBeamArray)
 		self.programLoaded = True
@@ -105,8 +105,8 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		options = QFileDialog.Options()
 		options |= QFileDialog.DontUseNativeDialog
 		fileName, _ = QFileDialog.getOpenFileName(self,
-			"QFileDialog.getOpenFileName()", 
-			"","All Files (*);;Text Files (*.txt)", 
+			"QFileDialog.getOpenFileName()",
+			"","All Files (*);;Text Files (*.txt)",
 			options=options)
 		if fileName:
 			self.initialNodeArray = []
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		options |= QFileDialog.DontUseNativeDialog
 		fileName, _ = QFileDialog.getSaveFileName(self,
 			"QFileDialog.getSaveFileName()","",
-			"All Files (*);;Text Files (*.txt)", 
+			"All Files (*);;Text Files (*.txt)",
 			options=options)
 		# Check to make sure ends in .txt
 		suffix = fileName[-4:-1] + fileName[-1]
@@ -149,8 +149,8 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			for node in design[0]:
 				f.write("%f, %f, %i, %i, %i, %i, %f, %f \n" % (node[0],node[1],node[2],node[3],node[4],node[5],node[6],node[7]))
 			for beam in design[1]:
-				f.write("%i, %i, %f, %f, %f \n" % (beam[0],beam[1],beam[2],beam[3],beam[4]))			
-			f.close() 
+				f.write("%i, %i, %f, %f, %f \n" % (beam[0],beam[1],beam[2],beam[3],beam[4]))
+			f.close()
 
 
 	def endOptimization(self):
@@ -161,7 +161,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 	def dampingChanged(self,value):
 		self.damping = float(value)/1000
 		self.dampingLabel.setText("Damping = %1.2f"%(self.damping))
-	
+
 	def maxStressChanged(self,newText):
 		if newText != "":
 			self.maxStress = float(newText)
@@ -201,9 +201,9 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		if self.programLoaded == True:
 			if self.userEdited == True:
 				self.userEdited = False
-			
+
 				# Add a new entry to the nodes list if last line is selected
-				if row == len(self.initialNodeArray): 
+				if row == len(self.initialNodeArray):
 					cell = self.nodesTable.item(row, column)
 					cellText = cell.text()
 					if cellText != '':
@@ -219,7 +219,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 					# Grab float value of text input for columns 0 and 1
 					if (column == 0 or column == 1):
 						cell = self.nodesTable.item(row, column)
-						cellText = cell.text()			
+						cellText = cell.text()
 						if cellText != '':
 							cellValue = float(cellText)
 						else:
@@ -258,7 +258,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		if self.programLoaded == True:
 			if self.userEdited == True:
 				self.userEdited = False
-				if row == len(self.initialBeamArray): 
+				if row == len(self.initialBeamArray):
 					cell = self.beamTable.item(row, column)
 					cellText = cell.text()
 					if cellText != '':
@@ -269,19 +269,19 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 
 					if column == 1:
 						self.initialBeamArray.append([cellValue-1,0,1,0,0])
-						self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))	
+						self.beamTable.setItem(row,1, QTableWidgetItem('%i'%(self.initialBeamArray[row][1]+1)))
 
 					elif column == 2:
 						self.initialBeamArray.append([0,cellValue-1,1,0,0])
 						self.beamTable.setItem(row,0, QTableWidgetItem('%i'%(self.initialBeamArray[row][0]+1)))
-					
+
 					self.beamTable.setRowCount(len(self.initialBeamArray)+1)
 				else:
 					# No action for column zero
 					# Grab integer value of text input for columns 1 and 2
 					if (column == 1 or column == 2):
 						cell = self.beamTable.item(row, column)
-						cellText = cell.text()			
+						cellText = cell.text()
 						if cellText != '':
 							cellValue = int(cellText)
 						else:
@@ -318,7 +318,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 						forcesArray.append([i,thisForce,thisAngle])
 
 				self.formerForceArray = forcesArray
-				if row == len(forcesArray): 
+				if row == len(forcesArray):
 					cell = self.forceTable.item(row, column)
 					cellText = cell.text()
 					if cellText != '':
@@ -326,33 +326,33 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 					else:
 						cellValue = 0
 					#cell.setText('%i'%(cellValue))
-					if column == 0:				
-						self.forceTable.setItem(row,1, QTableWidgetItem('1'))	
-						self.forceTable.setItem(row,2, QTableWidgetItem('0'))	
+					if column == 0:
+						self.forceTable.setItem(row,1, QTableWidgetItem('1'))
+						self.forceTable.setItem(row,2, QTableWidgetItem('0'))
 						self.initialNodeArray[int(cellValue)-1][6] = 1
 						self.initialNodeArray[int(cellValue)-1][7] = 0
 					if column == 1:
-						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))	
-						#self.forceTable.setItem(row,2, QTableWidgetItem('0'))	
+						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))
+						#self.forceTable.setItem(row,2, QTableWidgetItem('0'))
 						self.initialNodeArray[0][6] = cellValue
 						self.initialNodeArray[0][7] = 0
 
 					elif column == 2:
-						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))	
-						#self.forceTable.setItem(row,1, QTableWidgetItem('0'))	
+						#self.forceTable.setItem(row,0, QTableWidgetItem('1'))
+						#self.forceTable.setItem(row,1, QTableWidgetItem('0'))
 						self.initialNodeArray[0][6] = 0
 						self.initialNodeArray[0][7] = cellValue
-					
+
 					self.forceTable.setRowCount(len(forcesArray)+1)
 				else:
 					# Grab integer value of text input for columns 1 and 2
 					cell = self.forceTable.item(row, column)
-					cellText = cell.text()			
+					cellText = cell.text()
 					if cellText != '':
 						cellValue = float(cellText)
 					else:
 						cellValue = 0
-					
+
 					if column == 0:
 						cellValue = int(cellValue) - 1
 						# Copy values to new node
@@ -393,7 +393,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		self.nodesTable.setRowCount(len(self.initialNodeArray)+1)
 		for i in range(0,len(self.initialNodeArray)):
 			self.nodesTable.setItem(i,0, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][0])))
-			self.nodesTable.setItem(i,1, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][1])))	
+			self.nodesTable.setItem(i,1, QTableWidgetItem('%2.3f'%(self.initialNodeArray[i][1])))
 			# Fix X Checkboxes
 			if self.initialNodeArray[i][2] == True:
 				self.nodesTable.setItem(i,2, QTableWidgetItem('\u2714'))
@@ -414,13 +414,13 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 				self.nodesTable.setItem(i,5, QTableWidgetItem('\u2714'))
 			else:
 				self.nodesTable.setItem(i,5, QTableWidgetItem(''))
-	
+
 	def redrawBeamTable(self):
 		# Beam Table
 		self.beamTable.setRowCount(len(self.initialBeamArray)+1)
 		for i in range(0,len(self.initialBeamArray)):
 			self.beamTable.setItem(i,0, QTableWidgetItem('%i'%(self.initialBeamArray[i][0] + 1)))
-			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][1] + 1)))	
+			self.beamTable.setItem(i,1, QTableWidgetItem('%i'%(self.initialBeamArray[i][1] + 1)))
 
 	def redrawForceTable(self):
 		# Force Table
@@ -446,7 +446,7 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 		for i in range(0,len(self.currentNodeArray)):
 			self.nodesResultsTable.setItem(i,0, QTableWidgetItem('%i'%(i+1)))
 			self.nodesResultsTable.setItem(i,1, QTableWidgetItem('%2.4f'%(self.currentNodeArray[i][0])))
-			self.nodesResultsTable.setItem(i,2, QTableWidgetItem('%2.4f'%(self.currentNodeArray[i][1])))	
+			self.nodesResultsTable.setItem(i,2, QTableWidgetItem('%2.4f'%(self.currentNodeArray[i][1])))
 
 	def redrawBeamResultsTable(self):
 		self.beamResultsTable.setRowCount(len(self.currentBeamArray))
@@ -463,10 +463,10 @@ class MainWindow(QMainWindow, TrussUI.Ui_MainWindow):
 			beamLen = self.vLen([xFrom,yFrom],[xTo,yTo])
 			self.beamResultsTable.setItem(i,0, QTableWidgetItem('%2.2f'%(beamLen)))
 			# Areas
-			self.beamResultsTable.setItem(i,1, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][2])))	
-			self.beamResultsTable.setItem(i,2, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][3])))	
+			self.beamResultsTable.setItem(i,1, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][2])))
+			self.beamResultsTable.setItem(i,2, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][3])))
 			# Stresses
-			self.beamResultsTable.setItem(i,3, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][4])))	
+			self.beamResultsTable.setItem(i,3, QTableWidgetItem('%2.2f'%(self.currentBeamArray[i][4])))
 
 	def parseDesign(self,design):
 		print('Do we need to parse the design?')
