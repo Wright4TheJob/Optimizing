@@ -7,8 +7,8 @@
 
 from PyQt5 import QtCore, QtGui
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout, 
-							 QFileDialog, QLabel, QSlider, QCheckBox, 
+from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
+							 QFileDialog, QLabel, QSlider, QCheckBox,
 							 QLineEdit, QVBoxLayout, QApplication, QPushButton,
 							 QTableWidget, QTableWidgetItem,QSizePolicy,
 							 QGridLayout,QGroupBox, QMainWindow,QAction,QHeaderView,QComboBox,QProgressBar)
@@ -41,7 +41,7 @@ class MyMplCanvas(FigureCanvas):
 	def __init__(self, parent=None, width=5, height=4, dpi=100):
 		self.fig = Figure(figsize=(width, height), dpi=dpi)
 		self.axes = self.fig.add_subplot(111)
-		
+
 		FigureCanvas.__init__(self, self.fig)
 		self.setParent(parent)
 
@@ -50,7 +50,7 @@ class MyMplCanvas(FigureCanvas):
 								   QSizePolicy.Expanding)
 		FigureCanvas.updateGeometry(self)
 		FigureCanvas.mpl_connect(self,'button_press_event', self.double_click)
-		
+
 	def export(self,event):
 		filename = "ExportedGraph.pdf"
 		self.fig.savefig(filename)
@@ -64,10 +64,10 @@ class MyMplCanvas(FigureCanvas):
 		msg.setWindowModality(Qt.ApplicationModal)
 		msg.exec_()
 		print("Exported PDF file")
-		
+
 	def double_click(self, event):
 		FigureCanvas.mpl_connect(self,'button_press_event', self.export)
-		
+
 class MyDynamicMplCanvas(MyMplCanvas):
 	"""A canvas that updates itself frequently with a new plot."""
 	def __init__(self, *args, **kwargs):
@@ -75,7 +75,7 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		self.axes.set_xlabel("X")
 		self.axes.set_ylabel("Y")
 		self.axes.set_title("Four Bar Linkage")
-			 
+
 	def plotFourBar(self,targets,mechPoints,path):
 		self.axes.cla() #Clear axes
 		# Plot mechanism bars
@@ -83,13 +83,13 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		self.axes.plot([mechPoints[0][0],mechPoints[2][0]],[mechPoints[0][1],mechPoints[2][1]],'k')
 		# (Rocker) Base 2 to point 4
 		self.axes.plot([mechPoints[1][0],mechPoints[3][0]],[mechPoints[1][1],mechPoints[3][1]],'k')
-		# (DyadBase) Point 3 to point 4        
+		# (DyadBase) Point 3 to point 4
 		self.axes.plot([mechPoints[2][0],mechPoints[3][0]],[mechPoints[2][1],mechPoints[3][1]],'k')
-		# (Dyad Side 1) Point 3 to point 5        
+		# (Dyad Side 1) Point 3 to point 5
 		self.axes.plot([mechPoints[2][0],mechPoints[4][0]],[mechPoints[2][1],mechPoints[4][1]],'k')
-		# (Dyad Side 2) Point 4 to point 5        
+		# (Dyad Side 2) Point 4 to point 5
 		self.axes.plot([mechPoints[3][0],mechPoints[4][0]],[mechPoints[3][1],mechPoints[4][1]],'k')
-		
+
 		# Plot target positons
 		xTargets = targets[1]
 		yTargets = targets[2]
@@ -110,15 +110,15 @@ class MyDynamicMplCanvas(MyMplCanvas):
 class Ui_MainWindow(object):
 	def setupUi(self, MainWindow):
 		#Builds GUI
-		# Four input tables: 
+		# Four input tables:
 		# one with initial node coordinates (3xn: Node,X,Y)
 		# one with node connectivity (3xbeams: Element, From Node, To Node)
 		# one with reactions locations (3xreactions: Reaction, Node, Direction)
 		# and one with external loading (3xForces: On Node, Force, Angle)
-		
+
 		# Dynamic plot updates with triangles for reactions, lines for beams and filled circles for nodes, and arrow for applied forces
 		# Checks: all nodes have at least one member connectivity
-		# 
+		#
 		# Objective function: Sum(Area[i]*length[i])
 		# subject to:
 		# max(stresses) < maxStress
@@ -128,7 +128,7 @@ class Ui_MainWindow(object):
 		MainWindow.resize(1000, 800)
 		self.centralwidget = QWidget(MainWindow)
 		self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
-			 
+
 		### Controls box ###
 		controlsBox = QGroupBox("Controls")
 		controlsBoxLayout = QGridLayout()
@@ -163,7 +163,7 @@ class Ui_MainWindow(object):
 		# Node Table
 		self.inputTableLabel = QLabel("Enter Target Path Points",self)
 		self.inputTableLabel.setAlignment(Qt.AlignCenter)
-		inputBoxLayout.addWidget(self.inputTableLabel,0,0)		
+		inputBoxLayout.addWidget(self.inputTableLabel,0,0)
 		self.inputTable = QTableWidget()
 		self.inputTable.setColumnCount(4)
 		self.inputTable.setRowCount(1) # Make 1 longer than number of elements for manual addition of elements
@@ -181,14 +181,14 @@ class Ui_MainWindow(object):
 		self.graph_canvas = MyDynamicMplCanvas(self.main_widget, width=5, height=4, dpi=120)
 		#Define where the widgets go in the window
 		#We start by defining some boxes that we can arrange
-				
-		# Results Label Box 
+
+		# Results Label Box
 		resultsBox = QGroupBox("Results")
 		resultsBoxLayout = QVBoxLayout()
 		self.resultsBarLabel = QLabel("Optimization Progress",self)
-		resultsBoxLayout.addWidget(self.resultsBarLabel)		
+		resultsBoxLayout.addWidget(self.resultsBarLabel)
 		self.resultsBar = QProgressBar(self)
-		resultsBoxLayout.addWidget(self.resultsBar)		
+		resultsBoxLayout.addWidget(self.resultsBar)
 		self.length1Label = QLabel("Length 1 Not Computed Yet",self)
 		resultsBoxLayout.addWidget(self.length1Label)
 		self.length2Label = QLabel("Length 2 Not Computed Yet",self)
@@ -204,17 +204,17 @@ class Ui_MainWindow(object):
 		self.base2Label = QLabel("Base 2 Location Not Computed Yet",self)
 		resultsBoxLayout.addWidget(self.base2Label)
 		resultsBox.setLayout(resultsBoxLayout)
-				
+
 		#Now we can set all the previously defined boxes into the main window
 		grid_layout = QGridLayout()
-		grid_layout.addWidget(inputBox,0,0) 
+		grid_layout.addWidget(inputBox,0,0)
 		grid_layout.addWidget(resultsBox,1,1)
 		grid_layout.addWidget(controlsBox,1,0)
-		grid_layout.addWidget(self.graph_canvas,0,1) 
+		grid_layout.addWidget(self.graph_canvas,0,1)
 		#grid_layout.addWidget(distribution_box,1,1)
-		
+
 		self.centralwidget.setLayout(grid_layout)
-		
+
 		self.setWindowTitle('Four Bar Linkage Optimization')
 		self.activateWindow()
 		self.raise_()
@@ -242,7 +242,7 @@ class Ui_MainWindow(object):
 		saveOptimized_file.triggered.connect(self.saveOptimizedData)
 		file_menu.addAction(saveOptimized_file)
 
-		exit_action = QAction('&Exit', self)        
+		exit_action = QAction('&Exit', self)
 		exit_action.setShortcut('Ctrl+Q')
 		exit_action.setStatusTip('Exit application')
 		exit_action.triggered.connect(self.close) #This is built in

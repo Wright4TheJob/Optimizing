@@ -63,7 +63,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         baselength = self.vLen(self.initialMechanismBases[0],self.initialMechanismBases[1])
         #self.initialMechanismLengths = [baselength,0.3,0.75,0.6,1,1.5]
         self.initialMechanismLengths = [0.25, 1.1,0.83,1.25,1.46]
-        self.initialAlpha = 0.75
+        self.initialAlpha = 0.7
 
         # Four Bar Properties
         self.mechanismBases = self.initialMechanismBases
@@ -329,62 +329,6 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         delta = [0,0]
         delta[0] = [precisionPoints[1][1] - precisionPoints[0][1],precisionPoints[1][2] - precisionPoints[0][2]]
         delta[1] = [precisionPoints[2][1] - precisionPoints[0][1],precisionPoints[2][2] - precisionPoints[0][2]]
-
-
-    def calculateFourBarPoint(self,alphaInput):
-        # lengths is in format [base, z1,z2,z3,z4,z5]
-        # bases are in format [[base1X,base1Y],[base2X,base2Y]]
-        # alpha is a single float for crank angle from horizontal
-
-        bases = list(self.mechanismBases)
-        length = list(self.mechanismLengths)
-        length.insert(0,self.vLen(self.mechanismBases[0],self.mechanismBases[1]))
-        alpha = alphaInput + self.mechanismStartAngle
-
-        point1 = [0,0]
-        point1[0] = bases[0][0] + length[1]*np.cos(alpha)
-        point1[1] = bases[0][1] + length[1]*np.sin(alpha)
-
-        baseRun = np.float64(bases[1][0] - bases[0][0])
-        baseRise = np.float64(bases[1][1]-bases[0][1])
-        #print(baseRun)
-        #print(baseRise)
-        baseAngle = 0
-        if baseRise == 0:
-            if baseRun > 0:
-                baseAngle = 0
-            elif baseRun < 0:
-                baseAngle = np.pi
-        elif baseRun == 0:
-            if baseRise > 0:
-                baseAngle = np.pi/2
-            elif baseRise < 0:
-                baseAngle = 3*np.pi/2
-        else:
-            baseAngle = np.arctan(baseRise/baseRun)
-
-        x3 = length[0]*cos(baseAngle) - length[1]*cos(alpha)
-        y3 = length[0]*sin(baseAngle) - length[1]*sin(alpha)
-        theta3ArccosValue = (x3**2 + y3**2 + (-length[3])**2 - length[5]**2)/2 * (-length[3]) * math.sqrt(x3*x3 + y3*y3)
-        theta3ArccosValue = np.float64(theta3ArccosValue)
-        theta3pos = math.atan2(y3,x3) + np.arccos(theta3ArccosValue)
-        #print(theta3pos)
-        theta3neg = math.atan2(y3,x3) - np.arccos(theta3ArccosValue)
-
-        theta3 = theta3pos
-        theta5 = math.atan2((y3-(-length[3])*np.sin(theta3))/length[5], (x3-(-length[3])*np.cos(theta3))/length[5])
-        point2 = [0,0]
-        point2[0] = bases[1][0] + length[3]*np.cos(theta3)
-        point2[1] = bases[1][1] + length[3]*np.sin(theta3)
-
-        dyadAngle1 = np.arccos(np.float64(length[5]**2 + length[2]**2 - length[4]**2)/np.float64(2*length[5]*length[2]))
-        pointC = [0,0]
-        pointC[0] = point1[0]+length[2]*np.cos(theta5 + dyadAngle1)
-        pointC[1] = point1[1]+length[2]*np.sin(theta5 + dyadAngle1)
-
-        self.mechanismPoints = [bases[0],bases[1],point1,point2,pointC]
-
-        return self.mechanismPoints
 
     def calculateActualPath(self,angleList):
         xActual = [0]*len(angleList)
