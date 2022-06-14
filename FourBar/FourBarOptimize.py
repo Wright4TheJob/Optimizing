@@ -64,26 +64,19 @@ def evaluateObjectiveFunction(self,design,targets,rp=1):
     objective = 0.0
     for target in targets:
         # Calculate position at crank angle target[0]
-        position = self.calculateFourBarPoint(design,target[0])
-        if position == [99999,99999]:
-            objective += 999
-        else:
+        try:
+            position = self.calculateFourBarPoint(design,target[0])
             objective = objective + self.vLen(target[1:],position)**2
-        #print(target)
-    # if fails graphoff conditions, add large penalty value
-    #penalty = 0
+        except ValueError:
+            objective += 999
 
-    #epsilon = -0.2*np.sqrt(1/rp)
-
-    #objective = objective + penalty*rp
-    #print(objective)
+    #TODO: Add lengths of bars as minor addition to objective function
     return objective
 
-def calculateFourBarPose(design, alphaInput, start_angle=0):
+def calculateFourBarPose(design, alpha, link_positive=True, dyad_positive=True):
     # lengths is in format [base, z1,z2,z3,z4,z5]
     # bases are in format [[base1X,base1Y],[base2X,base2Y]]
     # alpha is a single float for crank angle from horizontal
-
 
     # for a given crank angle, there are four potential poses to consider:
     # two possible orientations for the dyad and two possible orientations
@@ -101,62 +94,52 @@ def calculateFourBarPose(design, alphaInput, start_angle=0):
     # Constraints:
     # all lengths > 0
     # Sum of two Dyad legs >= dyad base
-    bases = [[design[5],design[6]],
-            [design[7],design[8]]]
-    length = list(design[0:5])
-    length.insert(0,self.vLen(bases[0],bases[1]))
-    alpha = alphaInput + start_angle
 
+    #        C
+    #       / \
+    #     /    \
+    #    1--------2
+    #   /         \
+    #  /          \
+    # B1           B2
+    bases = design[0]
+    length = design[1]
+    length.insert(0,vLen(bases[0],bases[1]))
+
+    # Crank Endpoint
     point1 = [0,0]
     point1[0] = bases[0][0] + length[1]*np.cos(alpha)
     point1[1] = bases[0][1] + length[1]*np.sin(alpha)
 
-    baseRun = np.float64(bases[1][0] - bases[0][0])
-    baseRise = np.float64(bases[1][1]-bases[0][1])
-    #print(baseRun)
-    #print(baseRise)
-    baseAngle = 0
-    if baseRise == 0:
-        if baseRun > 0:
-            baseAngle = 0
-        elif baseRun < 0:
-            baseAngle = np.pi
-    elif baseRun == 0:
-        if baseRise > 0:
-            baseAngle = np.pi/2
-        elif baseRise < 0:
-            baseAngle = 3*np.pi/2
-    else:
-        baseAngle = np.arctan(baseRise/baseRun)
+    try:
+        point2options = link_intersections(bases[0], bases[1], length[2], length[3])
+        if link_positive:
+            point2 = point2options[0]
+        else:
+            point2 = point2options[1]
+    except ValueError:
+        raise ValueError("Mechanism is not solvable in this configuration")
 
-    x3 = length[0]*cos(baseAngle) - length[1]*cos(alpha)
-    y3 = length[0]*sin(baseAngle) - length[1]*sin(alpha)
-    theta3ArccosValue = (x3**2 + y3**2 + (-length[3])**2 - length[5]**2)/2 * (-length[3]) * math.sqrt(x3*x3 + y3*y3)
-    theta3ArccosValue = np.float64(theta3ArccosValue)
-    theta3pos = math.atan2(y3,x3) + np.arccos(theta3ArccosValue)
-    #print(theta3pos)
-    theta3neg = math.atan2(y3,x3) - np.arccos(theta3ArccosValue)
-
-    theta3 = theta3pos
-    theta5 = math.atan2((y3-(-length[3])*np.sin(theta3))/length[5], (x3-(-length[3])*np.cos(theta3))/length[5])
-    point2 = [0,0]
-    point2[0] = bases[1][0] + length[3]*np.cos(theta3)
-    point2[1] = bases[1][1] + length[3]*np.sin(theta3)
-
-    dyadAngle1 = np.arccos(np.float64(length[5]**2 + length[2]**2 - length[4]**2)/np.float64(2*length[5]*length[2]))
-    pointC = [0,0]
-    pointC[0] = point1[0]+length[2]*np.cos(theta5 + dyadAngle1)
-    pointC[1] = point1[1]+length[2]*np.sin(theta5 + dyadAngle1)
+    try:
+        pointCoptions = link_intersections(point1, point2, length[4], length[5])
+        if dyad_positive:
+            pointC = pointCoptions[0]
+        else:
+            pointC = pointCoptions[1]
+    except ValueError:
+        raise ValueError("Mechanism is not solvable in this configuration")
 
     mechanismPoints = [bases[0],bases[1],point1,point2,pointC]
-
     return mechanismPoints
 
-def calculateFourBarPoint(design,alphaInput, start_angle=0):
+def calculateFourBarPoint(design,alpha):
     # lengths is in format [base, z1,z2,z3,z4,z5]
     # bases are in format [[base1X,base1Y],[base2X,base2Y]]
     # alpha is a single float for crank angle from horizontal
-    pose = calculateFourBarPose(design, alphaInput, start_angle=start_angle)
+    try:
+        pose = calculateFourBarPose(design, alpha)
+    except ValueError:
+        raise ValueError("No end point for invalid mechanism")
     #print(pointC)
     return pose[-1]
 
@@ -235,7 +218,7 @@ def vLen(point1,point2):
     dx = point1[0] - point2[0]
     dy = point1[1] - point2[1]
 
-    length = np.sqrt(dx*dx + dy*dy)
+    length = math.sqrt(dx*dx + dy*dy)
     return length
 
 def threePointQuadraticApprox(x,y):
@@ -445,6 +428,5 @@ def angle_from_triangle_lengths(a,b,c):
     # Sides defined counter-clockwise from starting
     # Return angle is opposite side a
     acos_input = ((b*b) + (c*c) - (a*a)) / (2*b*c)
-    print(acos_input)
     alpha = math.acos(acos_input)
     return alpha

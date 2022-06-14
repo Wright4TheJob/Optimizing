@@ -103,9 +103,11 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		#self.axes.set_ylabel("Estimated Prob. Density Funct.")
 		#self.axes.set_title(title)
 		#self.axes.legend(shadow=True)
-		self.draw()
+		#self.draw()
 		#print("Finished Drawing Normalized Histogram.")
-
+		
+	def plot_line(self, a, b):
+		self.axes.plot([a[0],b[0]],[a[1],b[1]],'k')
 
 class Ui_MainWindow(object):
 	def setupUi(self, MainWindow):

@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (QWidget, QTreeView, QMessageBox, QHBoxLayout,
 from PyQt5.QtCore import Qt, QTimer, QCoreApplication, QThread
 from PyQt5 import QtCore, QtGui
 import FourBarUI
-import FourBarOptimize
+import FourBarOptimize as fb
 from scipy import stats
 from sympy import *
 import numpy as np
@@ -47,7 +47,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         self.mechanismStartAngle = 0.017
 
         # Targets = [[theta,x,y,exct],[theta,x,y,exact]]
-        self.targets = [[0,5,10,1],[30,10,10,1],[60,10,5,1],[90,5,5,0]]
+        self.targets = [[0,.2,.2,1],[90,0.2,2,1],[180,2,2,1],[270,2,.5,0]]
         self.exactSelected = 0
         self.countExactPoints()
 
@@ -56,22 +56,20 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         self.gammas = [15,25]
         self.design = [self.betas,self.gammas]
 
-        # Synthesize Mechanism
-        self.synthesizeMechanism()
         # Mechanism encoding: [lengths,base1,base2]
         self.initialMechanismBases = [[0.06,0.04],[1.5,-0.02]]
         baselength = self.vLen(self.initialMechanismBases[0],self.initialMechanismBases[1])
         #self.initialMechanismLengths = [baselength,0.3,0.75,0.6,1,1.5]
         self.initialMechanismLengths = [0.25, 1.1,0.83,1.25,1.46]
-        self.initialAlpha = 0.7
+        self.initialAlpha = 1.5
 
         # Four Bar Properties
         self.mechanismBases = self.initialMechanismBases
         self.mechanismLengths = self.initialMechanismLengths
-        self.mechanismPoints = self.calculateFourBarPoint(self.initialAlpha)
+        self.mechanismPoints = fb.calculateFourBarPoint([self.mechanismBases, self.mechanismLengths], self.initialAlpha)
 
         # Four bar plotting
-        self.plotAngles = np.linspace(0.0,6.28318530718,num=15).tolist()
+        self.plotAngles = np.linspace(0.0,2*np.pi,num=360).tolist()
         self.plotAngles.append(self.plotAngles[0])
         self.pathX = [0]*len(self.plotAngles)
         self.pathY = [0]*len(self.plotAngles)
@@ -99,7 +97,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
             target = targets_to_send[i]
             target[0] = target[0]*2*np.pi/360
             targets_to_send[i] = target
-        self.optimizeThread = FourBarOptimize.OptimizeThread(self.design,self.targets,controls)
+        self.optimizeThread = fb.OptimizeThread(self.design,self.targets,controls)
         # Connect to emitted signals
         self.optimizeThread.iterationDone.connect(self.iterationDone)
         self.optimizeThread.designOptimized.connect(self.designOptimized)
@@ -194,7 +192,6 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
                 self.userEdited = False
                 if self.targets[row][col] == True:
                     self.inputTable.setItem(row,col, QTableWidgetItem('\u2714'))
-                    self.synthesizeMechanism()
                 else:
                     self.inputTable.setItem(row,col, QTableWidgetItem(' '))
                 self.userEdited = True
@@ -282,7 +279,8 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         # Display mechanims plot
         self.calculateActualPath(self.plotAngles)
         path = [self.pathX,self.pathY]
-        pose = self.calculateFourBarPoint(self.initialAlpha)
+        pose = fb.calculateFourBarPose([self.mechanismBases, self.mechanismLengths],self.initialAlpha)
+
         self.graph_canvas.plotFourBar(self.targets, pose,path)
 
 
@@ -318,25 +316,16 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         length = np.sqrt(dx*dx + dy*dy)
         return length
 
-    def synthesizeMechanism(self):
-        precisionPoints = []
-        for target in self.targets:
-            if target[3] == True:
-                precisionPoints.append(target)
-        if len(precisionPoints) != 3:
-            print("Missing precision points, synthesis terminating")
-            return
-        delta = [0,0]
-        delta[0] = [precisionPoints[1][1] - precisionPoints[0][1],precisionPoints[1][2] - precisionPoints[0][2]]
-        delta[1] = [precisionPoints[2][1] - precisionPoints[0][1],precisionPoints[2][2] - precisionPoints[0][2]]
-
     def calculateActualPath(self,angleList):
         xActual = [0]*len(angleList)
         yActual = [0]*len(angleList)
         for i in range(0,len(angleList)):
-            points = self.calculateFourBarPoint(angleList[i])
-            xActual[i] = points[4][0]
-            yActual[i] = points[4][1]
+            try:
+                endpoint = fb.calculateFourBarPoint([self.mechanismBases, self.mechanismLengths],angleList[i])
+                xActual[i] = endpoint[0]
+                yActual[i] = endpoint[1]
+            except ValueError:
+                print("Mechanism not solvable")
         self.pathX = xActual
         self.pathY = yActual
 
