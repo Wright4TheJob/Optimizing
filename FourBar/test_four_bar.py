@@ -124,3 +124,26 @@ def test_vector_angle_q3():
 
 def test_vector_angle_q4():
     assert fb.absolute_vector_angle([0,0], [1, -1]) == pytest.approx(7*np.pi/4)
+
+#def test_cost_function_return_type():
+#    design = [[[0,0],[1,1]],[1,1,1,1,1]]
+#    targets = [[0,0,1,0]]
+#    controls = [0.1,1000]
+#    thread = fb.OptimizeThread(design, targets, controls)
+#    assert thread.evaluateObjectiveFunction(design) == pytest.approx(1.05)
+
+def test_list2design():
+    list = [1,2,3,4,5,6,7,8,9]
+    design = fb.list2design(list)
+    assert design[0][0] == [1,2]
+    assert design[0][1] == [3,4]
+    assert design[1] == [5,6,7,8,9]
+
+def test_vector_length_angle_1():
+    assert fb.vector_add_length_angle([0,0], 1, 0) == [1,0]
+
+def test_vector_length_angle_1():
+    assert fb.vector_add_length_angle([0,0], 1, np.pi/2) == [0,1]
+
+def test_vector_length_angle_1():
+    assert fb.vector_add_length_angle([0,0], 1, np.pi/4)[0] == pytest.approx(0.7071067811865475)

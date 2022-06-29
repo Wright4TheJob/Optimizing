@@ -80,15 +80,16 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		self.axes.cla() #Clear axes
 		# Plot mechanism bars
 		# (crank) Base1 to point 3
-		self.axes.plot([mechPoints[0][0],mechPoints[2][0]],[mechPoints[0][1],mechPoints[2][1]],'k')
-		# (Rocker) Base 2 to point 4
-		self.axes.plot([mechPoints[1][0],mechPoints[3][0]],[mechPoints[1][1],mechPoints[3][1]],'k')
-		# (DyadBase) Point 3 to point 4
-		self.axes.plot([mechPoints[2][0],mechPoints[3][0]],[mechPoints[2][1],mechPoints[3][1]],'k')
-		# (Dyad Side 1) Point 3 to point 5
-		self.axes.plot([mechPoints[2][0],mechPoints[4][0]],[mechPoints[2][1],mechPoints[4][1]],'k')
-		# (Dyad Side 2) Point 4 to point 5
-		self.axes.plot([mechPoints[3][0],mechPoints[4][0]],[mechPoints[3][1],mechPoints[4][1]],'k')
+		if mechPoints:
+			self.axes.plot([mechPoints[0][0],mechPoints[2][0]],[mechPoints[0][1],mechPoints[2][1]],'k')
+			# (Rocker) Base 2 to point 4
+			self.axes.plot([mechPoints[1][0],mechPoints[3][0]],[mechPoints[1][1],mechPoints[3][1]],'k')
+			# (DyadBase) Point 3 to point 4
+			self.axes.plot([mechPoints[2][0],mechPoints[3][0]],[mechPoints[2][1],mechPoints[3][1]],'k')
+			# (Dyad Side 1) Point 3 to point 5
+			self.axes.plot([mechPoints[2][0],mechPoints[4][0]],[mechPoints[2][1],mechPoints[4][1]],'k')
+			# (Dyad Side 2) Point 4 to point 5
+			self.axes.plot([mechPoints[3][0],mechPoints[4][0]],[mechPoints[3][1],mechPoints[4][1]],'k')
 
 		# Plot target positons
 		xTargets = targets[1]
@@ -103,9 +104,9 @@ class MyDynamicMplCanvas(MyMplCanvas):
 		#self.axes.set_ylabel("Estimated Prob. Density Funct.")
 		#self.axes.set_title(title)
 		#self.axes.legend(shadow=True)
-		#self.draw()
+		self.draw()
 		#print("Finished Drawing Normalized Histogram.")
-		
+
 	def plot_line(self, a, b):
 		self.axes.plot([a[0],b[0]],[a[1],b[1]],'k')
 
@@ -191,6 +192,13 @@ class Ui_MainWindow(object):
 		resultsBoxLayout.addWidget(self.resultsBarLabel)
 		self.resultsBar = QProgressBar(self)
 		resultsBoxLayout.addWidget(self.resultsBar)
+		self.angleLabel = QLabel("Angle = 90",self)
+		resultsBoxLayout.addWidget(self.angleLabel)
+		self.angleSlider = QSlider(Qt.Horizontal)
+		self.angleSlider.setMinimum(0)
+		self.angleSlider.setMaximum(360)
+		self.angleSlider.setValue(90)
+		resultsBoxLayout.addWidget(self.angleSlider)
 		self.length1Label = QLabel("Length 1 Not Computed Yet",self)
 		resultsBoxLayout.addWidget(self.length1Label)
 		self.length2Label = QLabel("Length 2 Not Computed Yet",self)

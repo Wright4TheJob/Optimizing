@@ -12,7 +12,7 @@ class OptimizeThread(QThread):
     designOptimized = QtCore.pyqtSignal(object)
     def __init__(self, design, targets, controls):
         QThread.__init__(self)
-        self.design = list(design)
+        self.design = design
         self.optimizedDesign = self.design
         self.targets = targets
 
@@ -38,19 +38,19 @@ class OptimizeThread(QThread):
         nMax = self.maxIterations
         #while rp < rpMax:
             #n = n+1.0
-        (error,optimumParameters) = self.steepestDescentMinimum(
+        (error,optimumParameters) = steepestDescentMinimum(
             self.evaluateObjectiveFunction,
-            list(self.optimizedDesign),
+            design2list(self.optimizedDesign),
             nMax = self.maxIterations,
             damping=self.damping)
 
         # Return to main thread
         #progress = float(n/nMax)
-        self.optimizedDesign = optimumParameters
+        self.optimizedDesign = list2design(optimumParameters)
         self.iterationDone.emit(self.optimizedDesign)
         #rp = rp*1.5
         self.objectiveSequence.append(error)
-
+        print(rounded_list(optimumParameters,3))
         return self.optimizedDesign
 
     def run(self):
@@ -59,19 +59,30 @@ class OptimizeThread(QThread):
 
         self.sleep(2)
 
-def evaluateObjectiveFunction(self,design,targets,rp=1):
+    def evaluateObjectiveFunction(self, design,rp=1):
+        targets = self.targets
+        objective = 0.0
+        for target in targets:
+            # Calculate position at crank angle target[0]
+            try:
+                position = calculateFourBarPoint(design,target[0])
+                objective = objective + vLen(target[1:],position)**2
+            except ValueError:
+                objective += 2
 
-    objective = 0.0
-    for target in targets:
-        # Calculate position at crank angle target[0]
-        try:
-            position = self.calculateFourBarPoint(design,target[0])
-            objective = objective + self.vLen(target[1:],position)**2
-        except ValueError:
-            objective += 999
+        #TODO: Add lengths of bars as minor addition to objective function
+        lengths = design[4:]
+        #print(lengths)
+        objective = objective + sum(lengths)/1000
+        return objective
 
-    #TODO: Add lengths of bars as minor addition to objective function
-    return objective
+def design2list(design):
+    return design[0][0] + design[0][1] + design[1]
+
+def list2design(param_list):
+    bases = [param_list[0:2], param_list[2:4]]
+    lengths = param_list[4:]
+    return [bases, lengths]
 
 def calculateFourBarPose(design, alpha, link_positive=True, dyad_positive=True):
     # lengths is in format [base, z1,z2,z3,z4,z5]
@@ -95,47 +106,77 @@ def calculateFourBarPose(design, alpha, link_positive=True, dyad_positive=True):
     # all lengths > 0
     # Sum of two Dyad legs >= dyad base
 
-    #        C
-    #       / \
-    #     /    \
-    #    1--------2
-    #   /         \
-    #  /          \
-    # B1           B2
+    #         C
+    #     3  / \ 4
+    #      /    \
+    #     1--------2
+    # 0  /    1    \
+    #   /          \ 2
+    #  B1---- 5 --- B2
     bases = design[0]
-    length = design[1]
-    length.insert(0,vLen(bases[0],bases[1]))
+    length_without_base = design[1]
+
+    lengths = length_without_base + [vLen(bases[0],bases[1])]
 
     # Crank Endpoint
-    point1 = [0,0]
-    point1[0] = bases[0][0] + length[1]*np.cos(alpha)
-    point1[1] = bases[0][1] + length[1]*np.sin(alpha)
+    point1 = vector_add_length_angle(bases[0], lengths[0], alpha)
 
     try:
-        point2options = link_intersections(bases[0], bases[1], length[2], length[3])
+        point2options = link_intersections(point1, bases[1], lengths[1], lengths[2])
         if link_positive:
             point2 = point2options[0]
         else:
             point2 = point2options[1]
     except ValueError:
-        raise ValueError("Mechanism is not solvable in this configuration")
+        raise ValueError("Mechanism base is not solvable in this configuration")
 
     try:
-        pointCoptions = link_intersections(point1, point2, length[4], length[5])
+        pointCoptions = link_intersections(point1, point2, lengths[4], lengths[5])
         if dyad_positive:
             pointC = pointCoptions[0]
         else:
             pointC = pointCoptions[1]
     except ValueError:
-        raise ValueError("Mechanism is not solvable in this configuration")
+        raise ValueError("Mechanism dyad is not solvable in this configuration")
 
     mechanismPoints = [bases[0],bases[1],point1,point2,pointC]
+    return mechanismPoints
+
+def vector_add_length_angle(start, length, angle):
+    # Start is a 2-element list of x,y coordinates
+    # Length is a value
+    # Angle is a value in radians
+    end = [0,0]
+    end[0] = start[0] + length*np.cos(angle)
+    end[1] = start[1] + length*np.sin(angle)
+    return end
+
+def dummy_pose(design,alpha):
+    bases = design[0]
+    length_without_base = design[1]
+
+    lengths = [vLen(bases[0],bases[1])] + length_without_base
+
+    # Crank Endpoint
+    point1 = [0,0]
+    point1[0] = bases[0][0] + lengths[1]*np.cos(alpha)
+    point1[1] = bases[0][1] + lengths[1]*np.sin(alpha)
+    mechanismPoints = [bases[0],bases[1],point1,bases[0],bases[0]]
     return mechanismPoints
 
 def calculateFourBarPoint(design,alpha):
     # lengths is in format [base, z1,z2,z3,z4,z5]
     # bases are in format [[base1X,base1Y],[base2X,base2Y]]
     # alpha is a single float for crank angle from horizontal
+
+    # Assumes Nested list design structure
+    if len(design) != 2:
+        optimizing_mode = True
+        #print("Making design a list in calculateFourBarPoint")
+        design = list2design(design)
+    else:
+        design = list(design)
+
     try:
         pose = calculateFourBarPose(design, alpha)
     except ValueError:
@@ -233,7 +274,7 @@ def minimizeParabola(c):
     # Outputs: Values of x and y where y is minimized
     minX = -c[1]/(2*c[2])
 
-    minY = self.getValueOfPoly(c,minX)
+    minY = getValueOfPoly(c,minX)
     return (minX,minY)
 
 def getValueOfPoly(c,x):
@@ -291,7 +332,7 @@ def steepestDescentMinimum(function,
         i = i+1
         # Get gradient at position
         # print("About to get gradient")
-        slopeList = self.gradient(function,position)
+        slopeList = gradient(function,position)
         # print("fitting polynomial...")
         # Get three points in that direction at positions of alpha
         functionValues = []
@@ -301,7 +342,7 @@ def steepestDescentMinimum(function,
                 testLocation.append(oldPosition-slope*alphaValue)
             functionValues.append(function(testLocation))
         # Fit parabola to curve
-        C = self.threePointQuadraticApprox(alpha, functionValues)
+        C = threePointQuadraticApprox(alpha, functionValues)
         # Check parabola is concave up
         # Calculate alpha that gives minimum
         alphaStar = 0.0
@@ -312,7 +353,7 @@ def steepestDescentMinimum(function,
             print("Shallow gradient, using constant step size")
             alphaStar = constantStepSize
         else:
-            (alphaStar,bestY) = self.minimizeParabola(C)
+            (alphaStar,bestY) = minimizeParabola(C)
         # Move to position of calculated alpha
         newPosition = []
         for oldPosition, slope in zip(position,slopeList):
@@ -430,3 +471,6 @@ def angle_from_triangle_lengths(a,b,c):
     acos_input = ((b*b) + (c*c) - (a*a)) / (2*b*c)
     alpha = math.acos(acos_input)
     return alpha
+
+def rounded_list(xs, places):
+    return [round(x,places) for x in xs]

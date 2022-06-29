@@ -58,15 +58,16 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
 
         # Mechanism encoding: [lengths,base1,base2]
         self.initialMechanismBases = [[0.06,0.04],[1.5,-0.02]]
-        baselength = self.vLen(self.initialMechanismBases[0],self.initialMechanismBases[1])
+        baselength = fb.vLen(self.initialMechanismBases[0],self.initialMechanismBases[1])
         #self.initialMechanismLengths = [baselength,0.3,0.75,0.6,1,1.5]
-        self.initialMechanismLengths = [0.25, 1.1,0.83,1.25,1.46]
+        self.initialMechanismLengths = [.8, 1.2,1.1,1,1]
         self.initialAlpha = 1.5
 
         # Four Bar Properties
         self.mechanismBases = self.initialMechanismBases
         self.mechanismLengths = self.initialMechanismLengths
-        self.mechanismPoints = fb.calculateFourBarPoint([self.mechanismBases, self.mechanismLengths], self.initialAlpha)
+        self.mechanism = [self.mechanismBases, self.mechanismLengths]
+        self.mechanismPoints = fb.calculateFourBarPoint(self.mechanism, self.initialAlpha)
 
         # Four bar plotting
         self.plotAngles = np.linspace(0.0,2*np.pi,num=360).tolist()
@@ -77,6 +78,7 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         # UI Connections
         self.programLoaded = False
         self.dampingSlider.valueChanged.connect(self.dampingChanged)
+        self.angleSlider.valueChanged.connect(self.angleChanged)
         self.inputTable.itemSelectionChanged.connect(self.selectedInputTable)
         self.inputTable.cellChanged.connect(self.inputCellChanged)
         self.maxIterationsTextBox.textChanged.connect(self.maxIterationsChanged)
@@ -84,20 +86,19 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
 
         # Display mechanims plot
         self.redraw_mechanism()
-
+        self.redrawResultsLabels()
         self.programLoaded = True
         self.userEdited = True
 
     def startOptimization(self):
         # Create calculation thread
-        self.design = self.packageDesign()
         controls = [self.damping,self.maxIterations]
         targets_to_send = self.targets
         for i in range(len(targets_to_send)):
             target = targets_to_send[i]
-            target[0] = target[0]*2*np.pi/360
+            target[0] = target[0]*np.pi/18
             targets_to_send[i] = target
-        self.optimizeThread = fb.OptimizeThread(self.design,self.targets,controls)
+        self.optimizeThread = fb.OptimizeThread(self.mechanism,targets_to_send,controls)
         # Connect to emitted signals
         self.optimizeThread.iterationDone.connect(self.iterationDone)
         self.optimizeThread.designOptimized.connect(self.designOptimized)
@@ -277,44 +278,36 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
 
     def redraw_mechanism(self):
         # Display mechanims plot
+        print("Redrawing Mechanism")
+        print("Bases:")
+        print(self.mechanismBases)
+        print("Lengths:")
+        print(self.mechanismLengths)
         self.calculateActualPath(self.plotAngles)
         path = [self.pathX,self.pathY]
-        pose = fb.calculateFourBarPose([self.mechanismBases, self.mechanismLengths],self.initialAlpha)
-
+        try:
+            pose = fb.calculateFourBarPose([self.mechanismBases, self.mechanismLengths],self.initialAlpha)
+        except ValueError:
+            pose = None
+            print("Invalid pose")
         self.graph_canvas.plotFourBar(self.targets, pose,path)
 
-
-    def parseDesign(self,design):
-        print('Do we need to parse the design?')
-
-    def packageDesign(self):
-        # Mechanism encoding: [lengths,base1,base2]
-        return self.mechanismLengths + self.mechanismBases[0] + self.mechanismBases[1]
-
     def iterationDone(self,design):
-        self.mechanismBases = [
-            [design[5],design[6]],
-            [design[7],design[8]]
-        ]
-        self.mechanismLengths = list(design[0:5])
+        print("Iteration Done")
+        self.mechanismBases = design[0]
+        self.mechanismLengths = design[1]
+        self.mechanism = [self.mechanismBases, self.mechanismLengths]
+
         #self.progress = int(design[2]*100)
-        print(design)
+        #print(design)
         self.redrawResults()
         self.resultsBar.setValue(self.progress)
 
     def designOptimized(self,design):
+        self.optimizeThread.terminate
         self.startButton.setEnabled(True)
         self.stopButton.setEnabled(False)
-        self.optimizeThread.terminate
         #print(design)
-
-    def vLen(self,point1,point2):
-        # takes in two points in the format [x,y] and returns the float of vector length
-        dx = point1[0] - point2[0]
-        dy = point1[1] - point2[1]
-
-        length = np.sqrt(dx*dx + dy*dy)
-        return length
 
     def calculateActualPath(self,angleList):
         xActual = [0]*len(angleList)
@@ -334,6 +327,16 @@ class MainWindow(QMainWindow, FourBarUI.Ui_MainWindow):
         for target in self.targets:
             if target[3] == True:
                 self.exactSelected = self.exactSelected + 1
+
+    def angleChanged(self, angle):
+        self.initialAlpha = angle * np.pi/ 180
+        self.angleLabel.setText("Angle = %i"%(self.initialAlpha*180 / np.pi))
+        try:
+            pose = fb.calculateFourBarPose([self.mechanismBases, self.mechanismLengths],self.initialAlpha)
+        except ValueError:
+            pose = fb.dummy_pose([self.mechanismBases, self.mechanismLengths], self.initialAlpha)
+            print("Invalid pose")
+        self.graph_canvas.plotFourBar(self.targets, pose, [self.pathX,self.pathY])
 
 def main():
     app = QApplication(sys.argv)
